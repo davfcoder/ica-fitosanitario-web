@@ -1,0 +1,10 @@
+# Variables de entorno
+**/.env
+.env
+.env.*
+
+# Dependencias
+**/node_modules
+
+# Logs
+*.log
