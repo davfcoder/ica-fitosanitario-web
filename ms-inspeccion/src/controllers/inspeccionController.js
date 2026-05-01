@@ -55,6 +55,29 @@ class InspeccionController {
             res.status(error.status || 500).json({ error: error.message });
         }
     }
+
+    async putActualizarInspeccion(req, res) {
+        try {
+            const inspeccion = await inspeccionService.actualizarInspeccion(req.params.id, req.body, req.usuario);
+            res.status(200).json({ message: 'Inspección actualizada exitosamente', data: inspeccion });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
+    async getInspeccionPorLoteYSolicitud(req, res) {
+        try {
+            const inspeccion = await inspeccionService.obtenerInspeccionPorLoteYSolicitud(
+                req.params.idLote, req.params.idSolicitud
+            );
+            if (!inspeccion) {
+                return res.status(404).json({ error: 'Inspección no encontrada' });
+            }
+            res.status(200).json({ message: 'Inspección encontrada', data: inspeccion });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
 }
 
 module.exports = new InspeccionController();

@@ -4,9 +4,14 @@ const usuarioRepository = require('../repositories/usuarioRepository');
 class UsuarioService {
 
     async crearUsuario(datos) {
-        // 1. Validar campos obligatorios
-        const camposObligatorios = ['num_identificacion', 'nombres', 'apellidos', 'direccion', 
-                                      'telefono', 'correo_electronico', 'contrasenia', 'id_rol'];
+        const esPropietario = Number(datos.id_rol) === 4;
+
+        // 1. Validar campos obligatorios (contraseña NO obligatoria para Propietario)
+        const camposBase = ['num_identificacion', 'nombres', 'apellidos', 'direccion',
+                            'telefono', 'correo_electronico', 'id_rol'];
+        // Propietario no necesita contraseña
+        const camposObligatorios = esPropietario ? camposBase : [...camposBase, 'contrasenia'];
+
         for (const campo of camposObligatorios) {
             if (!datos[campo]) {
                 throw { status: 400, message: `El campo '${campo}' es obligatorio` };
@@ -25,13 +30,18 @@ class UsuarioService {
             throw { status: 409, message: 'Ya existe un usuario con ese correo electrónico' };
         }
 
-        // 4. Validar rol válido (1: Admin, 2: Productor, 3: Asistente, 4: Propietario)
+        // 4. Validar rol válido
         if (![1, 2, 3, 4].includes(Number(datos.id_rol))) {
             throw { status: 400, message: 'Rol no válido. Use: 1 (Administrador), 2 (Productor), 3 (Asistente Técnico), 4 (Propietario)' };
         }
 
-        // 5. Encriptar contraseña
-        datos.contrasenia = await bcrypt.hash(datos.contrasenia, 12);
+        // 5. Contraseña: para Propietario guardar un hash inválido, para los demás encriptar
+        if (esPropietario) {
+            // String que nunca hará match con bcrypt.compare()
+            datos.contrasenia = '!NOLOGIN!';
+        } else {
+            datos.contrasenia = await bcrypt.hash(datos.contrasenia, 12);
+        }
 
         // 6. Guardar en BD
         const nuevoUsuario = await usuarioRepository.save(datos);
@@ -54,18 +64,15 @@ class UsuarioService {
     }
 
     async actualizarUsuario(id, datos, usuarioSolicitante) {
-        // 1. Verificar que el usuario existe
         const usuarioExistente = await usuarioRepository.findById(id);
         if (!usuarioExistente) {
             throw { status: 404, message: 'Usuario no encontrado' };
         }
 
-        // 2. Si se intenta modificar un Administrador, solo el admin principal (id=1) puede
         if (usuarioExistente.id_rol === 1 && usuarioSolicitante.id_usuario !== 1) {
             throw { status: 403, message: 'Solo el administrador principal puede modificar otros administradores' };
         }
 
-        // 3. Validar duplicados de identificación (si cambió)
         if (datos.num_identificacion && datos.num_identificacion !== usuarioExistente.num_identificacion) {
             const existeIdent = await usuarioRepository.findByNumIdentificacion(datos.num_identificacion);
             if (existeIdent) {
@@ -73,7 +80,6 @@ class UsuarioService {
             }
         }
 
-        // 4. Validar duplicados de correo (si cambió)
         if (datos.correo_electronico && datos.correo_electronico !== usuarioExistente.correo_electronico) {
             const existeCorreo = await usuarioRepository.findByCorreo(datos.correo_electronico);
             if (existeCorreo) {
@@ -81,7 +87,6 @@ class UsuarioService {
             }
         }
 
-        // 5. Construir objeto actualizado (mantener datos previos si no se envían)
         const usuarioActualizado = {
             num_identificacion: datos.num_identificacion || usuarioExistente.num_identificacion,
             nombres: datos.nombres || usuarioExistente.nombres,
@@ -99,23 +104,19 @@ class UsuarioService {
     }
 
     async eliminarUsuario(id, usuarioSolicitante) {
-        // 1. Verificar que existe
         const usuario = await usuarioRepository.findById(id);
         if (!usuario) {
             throw { status: 404, message: 'Usuario no encontrado' };
         }
 
-        // 2. No se puede eliminar a sí mismo
         if (Number(id) === usuarioSolicitante.id_usuario) {
             throw { status: 400, message: 'No puede eliminarse a sí mismo' };
         }
 
-        // 3. Solo el admin principal puede eliminar otros admins
         if (usuario.id_rol === 1 && usuarioSolicitante.id_usuario !== 1) {
             throw { status: 403, message: 'Solo el administrador principal puede eliminar otros administradores' };
         }
 
-        // 4. No se puede eliminar el admin principal (id=1)
         if (Number(id) === 1) {
             throw { status: 403, message: 'El administrador principal no puede ser eliminado' };
         }

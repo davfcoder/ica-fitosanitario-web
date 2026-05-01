@@ -4,7 +4,7 @@ class LoteController {
 
     async postCrearLote(req, res) {
         try {
-            const lote = await loteService.crearLote(req.body);
+            const lote = await loteService.crearLote(req.body, req.usuario);
             res.status(201).json({ message: 'Lote registrado exitosamente', data: lote });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -13,12 +13,14 @@ class LoteController {
 
     async getLotes(req, res) {
         try {
-            // Soporta ?lugar=1 y ?lugar=1&activos=true
             if (req.query.lugar && req.query.activos === 'true') {
                 const lotes = await loteService.listarLotesActivosPorLugar(req.query.lugar);
                 return res.status(200).json({ message: 'Lotes activos del lugar', data: lotes });
             }
-            const lotes = await loteService.listarLotes({ id_lugar_produccion: req.query.lugar });
+            const lotes = await loteService.listarLotes(
+                { id_lugar_produccion: req.query.lugar },
+                req.usuario
+            );
             res.status(200).json({ message: 'Lista de lotes', data: lotes });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -36,7 +38,7 @@ class LoteController {
 
     async putLote(req, res) {
         try {
-            const lote = await loteService.actualizarLote(req.params.id, req.body);
+            const lote = await loteService.actualizarLote(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Lote actualizado exitosamente', data: lote });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -45,7 +47,7 @@ class LoteController {
 
     async deleteLote(req, res) {
         try {
-            await loteService.eliminarLote(req.params.id);
+            await loteService.eliminarLote(req.params.id, req.usuario);
             res.status(200).json({ message: 'Lote eliminado exitosamente' });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });

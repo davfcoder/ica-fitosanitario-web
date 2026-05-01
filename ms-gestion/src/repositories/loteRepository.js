@@ -28,6 +28,20 @@ class LoteRepository {
         return rows[0] || null;
     }
 
+    async findByProductor(idProductor) {
+        const [rows] = await pool.execute(
+            `SELECT l.*, v.nom_variedad, ev.nom_especie, ev.nom_comun, ev.ciclo_cultivo,
+                    lp.nom_lugar_produccion
+            FROM Lote l
+            INNER JOIN VariedadEspecie v ON l.id_variedad = v.id_variedad
+            INNER JOIN EspecieVegetal ev ON v.id_especie = ev.id_especie
+            INNER JOIN LugarProduccion lp ON l.id_lugar_produccion = lp.id_lugar_produccion
+            WHERE lp.id_usuario_productor = ?
+            ORDER BY lp.nom_lugar_produccion ASC, l.numero ASC`, [idProductor]
+        );
+        return rows;
+    }
+
     async findByLugarProduccion(idLugar) {
         const [rows] = await pool.execute(
             `SELECT l.*, v.nom_variedad, ev.nom_especie, ev.nom_comun, ev.ciclo_cultivo

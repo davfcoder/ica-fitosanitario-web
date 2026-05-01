@@ -44,7 +44,7 @@ class SolicitudInspeccionController {
 
     async patchIniciar(req, res) {
         try {
-            const solicitud = await solicitudService.iniciarInspeccion(req.params.id);
+            const solicitud = await solicitudService.iniciarInspeccion(req.params.id, req.usuario);
             res.status(200).json({ message: 'Inspección iniciada', data: solicitud });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -53,8 +53,35 @@ class SolicitudInspeccionController {
 
     async patchCompletar(req, res) {
         try {
-            const solicitud = await solicitudService.completarInspeccion(req.params.id);
+            const solicitud = await solicitudService.completarInspeccion(req.params.id, req.usuario);
             res.status(200).json({ message: 'Inspección completada exitosamente', data: solicitud });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
+    async patchCancelar(req, res) {
+        try {
+            const solicitud = await solicitudService.cancelarSolicitud(req.params.id, req.body);
+            res.status(200).json({ message: 'Solicitud cancelada', data: solicitud });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
+    async patchInconclusa(req, res) {
+        try {
+            const solicitud = await solicitudService.marcarInconclusa(req.params.id, req.body, req.usuario);
+            res.status(200).json({ message: 'Inspección marcada como inconclusa', data: solicitud });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
+    async patchReasignar(req, res) {
+        try {
+            const solicitud = await solicitudService.reasignarSolicitud(req.params.id, req.body);
+            res.status(200).json({ message: 'Solicitud reasignada exitosamente', data: solicitud });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
         }

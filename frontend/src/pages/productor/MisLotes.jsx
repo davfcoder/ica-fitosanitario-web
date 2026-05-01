@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { API_GESTION } from '../../api/axiosConfig';
+import { useAuth } from '../../context/AuthContext';
 import {
     FiPlus, FiEdit2, FiTrash2, FiSearch, FiSave, FiX,
     FiLayers, FiAlertCircle, FiFilter, FiCalendar
 } from 'react-icons/fi';
 
 const MisLotes = () => {
+    const { isAdmin } = useAuth();
+    const soloLectura = isAdmin; // Admin solo consulta
+
     const [lotes, setLotes] = useState([]);
     const [lugares, setLugares] = useState([]);
     const [variedades, setVariedades] = useState([]);
@@ -25,7 +29,6 @@ const MisLotes = () => {
     });
     const [guardando, setGuardando] = useState(false);
 
-    // Variedades filtradas por especie seleccionada
     const [filtroEspecieForm, setFiltroEspecieForm] = useState('');
     const [variedadesFiltradas, setVariedadesFiltradas] = useState([]);
 
@@ -41,12 +44,10 @@ const MisLotes = () => {
         cargarDatos();
     }, []);
 
-    // Filtrar variedades cuando cambia la especie en el formulario
     useEffect(() => {
         if (filtroEspecieForm) {
             const filtradas = variedades.filter(v => v.id_especie === Number(filtroEspecieForm));
             setVariedadesFiltradas(filtradas);
-            // Si la variedad seleccionada no está en las filtradas, limpiar
             if (!filtradas.find(v => v.id_variedad === Number(form.id_variedad))) {
                 setForm(prev => ({ ...prev, id_variedad: '' }));
             }
@@ -55,7 +56,6 @@ const MisLotes = () => {
         }
     }, [filtroEspecieForm, variedades]);
 
-    // Cargar área disponible cuando cambia el lugar en el formulario
     useEffect(() => {
         if (form.id_lugar_produccion) {
             cargarAreaDisponible(form.id_lugar_produccion);
@@ -75,7 +75,6 @@ const MisLotes = () => {
             ]);
 
             setLotes(lotesRes.data.data);
-            // Solo lugares aprobados para crear lotes
             setLugares(lugaresRes.data.data.filter(l => l.estado === 'aprobado'));
             setVariedades(variedadesRes.data.data);
             setEspecies(especiesRes.data.data);
@@ -94,7 +93,6 @@ const MisLotes = () => {
             const areaTotal = areaRes.data.data.area_total_hectareas;
             const areaUsada = lotesLugar.data.data.reduce((sum, l) => sum + l.area_total, 0);
 
-            // Si estamos editando, no contar el lote actual
             let descuento = 0;
             if (editando) {
                 const loteActual = lotesLugar.data.data.find(l => l.id_lote === editando);
@@ -127,7 +125,6 @@ const MisLotes = () => {
     };
 
     const abrirFormEditar = (lote) => {
-        // Encontrar la especie de la variedad del lote
         const variedad = variedades.find(v => v.id_variedad === lote.id_variedad);
         const idEspecie = variedad ? variedad.id_especie : '';
 
@@ -175,7 +172,6 @@ const MisLotes = () => {
                 id_lugar_produccion: Number(form.id_lugar_produccion)
             };
 
-            // Limpiar fecha eliminación si está vacía
             if (!datos.fec_eliminacion) datos.fec_eliminacion = null;
             if (!datos.fec_siembra) datos.fec_siembra = null;
 
@@ -212,9 +208,11 @@ const MisLotes = () => {
         }
     };
 
-    const getNombreLugar = (id) => {
-        const lugar = lugares.find(l => l.id_lugar_produccion === id);
-        return lugar ? lugar.nom_lugar_produccion : `Lugar #${id}`;
+    // Usar nom_lugar_produccion que viene del backend (JOIN), con fallback
+    const getNombreLugar = (lote) => {
+        if (lote.nom_lugar_produccion) return lote.nom_lugar_produccion;
+        const lugar = lugares.find(l => l.id_lugar_produccion === lote.id_lugar_produccion);
+        return lugar ? lugar.nom_lugar_produccion : `Lugar #${lote.id_lugar_produccion}`;
     };
 
     const getNombreVariedad = (id) => {
@@ -248,11 +246,16 @@ const MisLotes = () => {
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <div>
                     <h4 style={{ fontWeight: 700 }}>
-                        <FiLayers className="me-2" /> Gestión de Lotes
+                        <FiLayers className="me-2" />
+                        {soloLectura ? 'Consulta de Lotes' : 'Gestión de Lotes'}
                     </h4>
-                    <p className="text-muted mb-0">Administre los lotes de sus lugares de producción</p>
+                    <p className="text-muted mb-0">
+                        {soloLectura
+                            ? 'Visualización de los lotes registrados en el sistema'
+                            : 'Administre los lotes de sus lugares de producción'}
+                    </p>
                 </div>
-                {lugares.length > 0 && (
+                {!soloLectura && lugares.length > 0 && (
                     <button className="btn btn-primary-productor text-white" onClick={abrirFormCrear}>
                         <FiPlus className="me-2" /> Nuevo Lote
                     </button>
@@ -261,15 +264,15 @@ const MisLotes = () => {
 
             {exito && <div className="alert alert-success py-2">{exito}</div>}
 
-            {lugares.length === 0 && (
+            {!soloLectura && lugares.length === 0 && (
                 <div className="alert alert-info">
                     <FiAlertCircle className="me-2" />
                     No tiene lugares de producción aprobados. Debe tener al menos un lugar aprobado para registrar lotes.
                 </div>
             )}
 
-            {/* Formulario */}
-            {mostrarForm && (
+            {/* Formulario — Solo para Productor */}
+            {!soloLectura && mostrarForm && (
                 <div className="content-card mb-4 border-start border-4" style={{ borderColor: 'var(--color-productor)' }}>
                     <h6 className="fw-bold mb-3">
                         {editando ? 'Editar Lote' : 'Nuevo Lote'}
@@ -282,7 +285,6 @@ const MisLotes = () => {
 
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3">
-                            {/* Lugar de producción */}
                             <div className="col-md-6">
                                 <label className="form-label fw-semibold">Lugar de Producción *</label>
                                 <select
@@ -299,7 +301,6 @@ const MisLotes = () => {
                                 </select>
                             </div>
 
-                            {/* Número de lote */}
                             <div className="col-md-3">
                                 <label className="form-label fw-semibold">Número de Lote *</label>
                                 <input
@@ -309,7 +310,6 @@ const MisLotes = () => {
                                 />
                             </div>
 
-                            {/* Área */}
                             <div className="col-md-3">
                                 <label className="form-label fw-semibold">Área Total (ha) *</label>
                                 <input
@@ -324,7 +324,6 @@ const MisLotes = () => {
                                 )}
                             </div>
 
-                            {/* Especie (filtro para variedad) */}
                             <div className="col-md-6">
                                 <label className="form-label fw-semibold">Especie Vegetal (filtrar variedad)</label>
                                 <select
@@ -341,7 +340,6 @@ const MisLotes = () => {
                                 </select>
                             </div>
 
-                            {/* Variedad */}
                             <div className="col-md-6">
                                 <label className="form-label fw-semibold">Variedad de Especie *</label>
                                 <select
@@ -361,7 +359,6 @@ const MisLotes = () => {
                                 </select>
                             </div>
 
-                            {/* Fechas */}
                             <div className="col-md-4">
                                 <label className="form-label fw-semibold">
                                     <FiCalendar className="me-1" /> Fecha de Siembra
@@ -442,13 +439,13 @@ const MisLotes = () => {
                                 <th>Área (ha)</th>
                                 <th>Siembra</th>
                                 <th>Estado</th>
-                                <th className="text-center">Acciones</th>
+                                {!soloLectura && <th className="text-center">Acciones</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {lotesFiltrados.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="text-center text-muted py-4">
+                                    <td colSpan={soloLectura ? 6 : 7} className="text-center text-muted py-4">
                                         No se encontraron lotes
                                     </td>
                                 </tr>
@@ -457,7 +454,7 @@ const MisLotes = () => {
                                     <tr key={lote.id_lote}>
                                         <td><strong>{lote.numero}</strong></td>
                                         <td style={{ fontSize: '0.85rem' }}>
-                                            {getNombreLugar(lote.id_lugar_produccion)}
+                                            {getNombreLugar(lote)}
                                         </td>
                                         <td style={{ fontSize: '0.85rem' }}>
                                             {getNombreVariedad(lote.id_variedad)}
@@ -479,22 +476,24 @@ const MisLotes = () => {
                                                 <span className="badge bg-success">Activo</span>
                                             )}
                                         </td>
-                                        <td className="text-center">
-                                            <button
-                                                className="btn btn-sm btn-outline-primary me-1"
-                                                onClick={() => abrirFormEditar(lote)}
-                                                title="Editar"
-                                            >
-                                                <FiEdit2 />
-                                            </button>
-                                            <button
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() => { setModalEliminar(lote); setErrorEliminar(''); }}
-                                                title="Eliminar"
-                                            >
-                                                <FiTrash2 />
-                                            </button>
-                                        </td>
+                                        {!soloLectura && (
+                                            <td className="text-center">
+                                                <button
+                                                    className="btn btn-sm btn-outline-primary me-1"
+                                                    onClick={() => abrirFormEditar(lote)}
+                                                    title="Editar"
+                                                >
+                                                    <FiEdit2 />
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    onClick={() => { setModalEliminar(lote); setErrorEliminar(''); }}
+                                                    title="Eliminar"
+                                                >
+                                                    <FiTrash2 />
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             )}
@@ -506,8 +505,8 @@ const MisLotes = () => {
                 </div>
             </div>
 
-            {/* Modal eliminar */}
-            {modalEliminar && (
+            {/* Modal eliminar — Solo para Productor */}
+            {!soloLectura && modalEliminar && (
                 <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <div className="modal-dialog modal-dialog-centered">
                         <div className="modal-content">
@@ -527,7 +526,7 @@ const MisLotes = () => {
                                     {modalEliminar.numero} — {getNombreVariedad(modalEliminar.id_variedad)}
                                 </p>
                                 <p className="text-muted small">
-                                    {getNombreLugar(modalEliminar.id_lugar_produccion)} | {modalEliminar.area_total} ha
+                                    {getNombreLugar(modalEliminar)} | {modalEliminar.area_total} ha
                                 </p>
                                 <div className="alert alert-warning py-2">
                                     <small>Esta acción no se puede deshacer.</small>

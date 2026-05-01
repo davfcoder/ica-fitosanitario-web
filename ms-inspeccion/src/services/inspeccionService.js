@@ -66,6 +66,43 @@ class InspeccionService {
         return await inspeccionRepository.save(inspeccion);
     }
 
+    async actualizarInspeccion(id, datos, usuario) {
+        const inspeccion = await inspeccionRepository.findById(id);
+        if (!inspeccion) {
+            throw { status: 404, message: 'Inspección no encontrada' };
+        }
+
+        if (inspeccion.id_usuario_asistente !== usuario.id_usuario) {
+            throw { status: 403, message: 'Solo el asistente que registró la inspección puede editarla' };
+        }
+
+        // Verificar que la solicitud siga en proceso
+        const solicitud = await solicitudInspeccionRepository.findById(inspeccion.id_solicitud);
+        if (solicitud && solicitud.estado === 'completada') {
+            throw { status: 400, message: 'No se puede editar: la inspección ya fue completada' };
+        }
+
+        // Recalcular porcentajes
+        if (datos.hallazgos_plagas && datos.cantidad_plantas_evaluadas) {
+            datos.hallazgos_plagas = datos.hallazgos_plagas.map(h => ({
+                ...h,
+                porcentaje_infestacion: Math.round((h.cantidad_plantas_infestadas / datos.cantidad_plantas_evaluadas) * 10000) / 100
+            }));
+        }
+
+        return await inspeccionRepository.update(id, {
+            estado_fenologico: datos.estado_fenologico,
+            cantidad_plantas_evaluadas: datos.cantidad_plantas_evaluadas,
+            observaciones: datos.observaciones,
+            hallazgos_plagas: datos.hallazgos_plagas,
+            evidencias_fotograficas: datos.evidencias_fotograficas
+        });
+    }
+
+    async obtenerInspeccionPorLoteYSolicitud(idLote, idSolicitud) {
+        return await inspeccionRepository.findByLoteYSolicitud(idLote, idSolicitud);
+    }
+
     async obtenerInspeccionPorId(id) {
         const inspeccion = await inspeccionRepository.findById(id);
         if (!inspeccion) {

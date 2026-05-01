@@ -2,6 +2,46 @@ const lugarProduccionService = require('../services/lugarProduccionService');
 
 class LugarProduccionController {
 
+    // Productor solicita edición
+    async patchSolicitarEdicion(req, res) {
+        try {
+            const lugar = await lugarProduccionService.solicitarEdicion(req.params.id, req.body, req.usuario);
+            res.status(200).json({ message: 'Solicitud de edición enviada', data: lugar });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
+    // Productor solicita cancelación
+    async patchSolicitarCancelacion(req, res) {
+        try {
+            const lugar = await lugarProduccionService.solicitarCancelacion(req.params.id, req.body, req.usuario);
+            res.status(200).json({ message: 'Solicitud de cancelación enviada', data: lugar });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
+    // Admin aprueba cambio (edición o cancelación)
+    async patchAprobarCambio(req, res) {
+        try {
+            const lugar = await lugarProduccionService.aprobarCambio(req.params.id, req.body);
+            res.status(200).json({ message: 'Cambio aprobado exitosamente', data: lugar });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
+    // Admin rechaza cambio
+    async patchRechazarCambio(req, res) {
+        try {
+            const lugar = await lugarProduccionService.rechazarCambio(req.params.id, req.body);
+            res.status(200).json({ message: 'Cambio rechazado', data: lugar });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    }
+
     // Productor crea solicitud
     async postCrearLugar(req, res) {
         try {

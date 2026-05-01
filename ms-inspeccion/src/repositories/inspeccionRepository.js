@@ -40,6 +40,17 @@ class InspeccionRepository {
         }).sort({ fec_inspeccion: -1 });
     }
 
+    async update(id, datos) {
+        return await InspeccionFitosanitaria.findByIdAndUpdate(id, datos, { new: true });
+    }
+
+    async findByLoteYSolicitud(idLote, idSolicitud) {
+        return await InspeccionFitosanitaria.findOne({
+            id_lote: idLote,
+            id_solicitud: idSolicitud
+        });
+    }
+    
     async findConFiltros(filtros) {
         const query = {};
 

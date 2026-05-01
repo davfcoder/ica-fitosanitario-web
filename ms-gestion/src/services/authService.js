@@ -5,24 +5,25 @@ const usuarioRepository = require('../repositories/usuarioRepository');
 class AuthService {
 
     async autenticarUsuario(correo, contrasenia) {
-        // 1. Validar que se enviaron los campos
         if (!correo || !contrasenia) {
             throw { status: 400, message: 'Correo electrónico y contraseña son obligatorios' };
         }
 
-        // 2. Buscar usuario por correo
         const usuario = await usuarioRepository.findByCorreo(correo);
         if (!usuario) {
             throw { status: 401, message: 'Credenciales inválidas' };
         }
 
-        // 3. Comparar contraseña
+        // >>> NUEVO: Bloquear Propietario
+        if (usuario.id_rol === 4) {
+            throw { status: 403, message: 'Este usuario no tiene acceso al sistema' };
+        }
+
         const contrasenaValida = await bcrypt.compare(contrasenia, usuario.contrasenia);
         if (!contrasenaValida) {
             throw { status: 401, message: 'Credenciales inválidas' };
         }
 
-        // 4. Generar token JWT
         const payload = {
             id_usuario: usuario.id_usuario,
             correo_electronico: usuario.correo_electronico,
@@ -34,7 +35,6 @@ class AuthService {
             expiresIn: process.env.JWT_EXPIRES_IN
         });
 
-        // 5. Retornar datos del usuario (sin contraseña) y token
         return {
             token,
             usuario: {

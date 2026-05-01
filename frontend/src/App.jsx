@@ -13,6 +13,10 @@ import LugaresProduccion from './pages/admin/LugaresProduccion';
 import MisLugares from './pages/productor/MisLugares';
 import ProductorDashboard from './pages/productor/ProductorDashboard';
 import MisLotes from './pages/productor/MisLotes';
+import MisSolicitudes from './pages/productor/MisSolicitudes';
+import AsistenteDashboard from './pages/asistente/AsistenteDashboard';
+import SolicitudesAdmin from './pages/admin/SolicitudesAdmin';
+import RegistroInspeccion from './pages/asistente/RegistroInspeccion';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -136,7 +140,7 @@ const AppRoutes = () => {
             } />
             <Route path="/admin/solicitudes" element={
                 <ProtectedRoute allowedRoles={['Administrador ICA']}>
-                    <Placeholder titulo="Solicitudes de Inspección" />
+                    <SolicitudesAdmin />
                 </ProtectedRoute>
             } />
             <Route path="/admin/inspecciones" element={
@@ -168,7 +172,7 @@ const AppRoutes = () => {
             } />
             <Route path="/productor/inspecciones" element={
                 <ProtectedRoute allowedRoles={['Productor']}>
-                    <Placeholder titulo="Inspecciones" />
+                    <MisSolicitudes />
                 </ProtectedRoute>
             } />
             <Route path="/productor/reportes" element={
@@ -183,9 +187,14 @@ const AppRoutes = () => {
             } />
 
             {/* === ASISTENTE === */}
+            <Route path="/asistente/inspeccion/:idSolicitud" element={
+                <ProtectedRoute allowedRoles={['Asistente Técnico']}>
+                    <RegistroInspeccion />
+                </ProtectedRoute>
+            } />
             <Route path="/asistente" element={
                 <ProtectedRoute allowedRoles={['Asistente Técnico']}>
-                    <Placeholder titulo="Mis Inspecciones" />
+                    <AsistenteDashboard />
                 </ProtectedRoute>
             } />
             <Route path="/asistente/calendario" element={

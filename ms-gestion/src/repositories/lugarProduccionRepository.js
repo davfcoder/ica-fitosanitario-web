@@ -2,6 +2,44 @@ const pool = require('../config/database');
 
 class LugarProduccionRepository {
 
+    // Cambiar estado con observaciones del productor
+    async updateEstadoProductor(id, estado, observacionesProductor) {
+        const [result] = await pool.execute(
+            `UPDATE LugarProduccion SET estado = ?, observaciones_productor = ? 
+            WHERE id_lugar_produccion = ?`,
+            [estado, observacionesProductor || null, id]
+        );
+        return result.affectedRows > 0;
+    }
+
+    // Cambiar estado y observaciones admin SIN tocar nro_registro_ica ni fec_aprobacion
+    async updateEstadoSimple(id, estado, observacionesAdmin) {
+        const [result] = await pool.execute(
+            `UPDATE LugarProduccion SET estado = ?, observaciones_admin = ?, 
+            observaciones_productor = NULL
+            WHERE id_lugar_produccion = ?`,
+            [estado, observacionesAdmin || null, id]
+        );
+        return result.affectedRows > 0;
+    }
+
+    // Verificar lotes activos (sin fecha de eliminación)
+    async tieneLotesActivos(id) {
+        const [rows] = await pool.execute(
+            `SELECT COUNT(*) as total FROM Lote 
+            WHERE id_lugar_produccion = ? AND fec_eliminacion IS NULL`, [id]
+        );
+        return rows[0].total > 0;
+    }
+
+    // Eliminar registros de LugarEspecie al cancelar
+    async deleteLugarEspecies(id) {
+        const [result] = await pool.execute(
+            `DELETE FROM LugarEspecie WHERE id_lugar_produccion = ?`, [id]
+        );
+        return result.affectedRows;
+    }
+
     async findAll() {
         const [rows] = await pool.execute(
             `SELECT lp.*, u.nombres as productor_nombres, u.apellidos as productor_apellidos

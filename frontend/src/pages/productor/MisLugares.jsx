@@ -3,7 +3,8 @@ import { API_GESTION } from '../../api/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
 import {
     FiPlus, FiSearch, FiSave, FiX, FiMapPin,
-    FiAlertCircle, FiEye, FiClock, FiCheck, FiXCircle, FiEdit2
+    FiAlertCircle, FiEye, FiClock, FiCheck, FiXCircle,
+    FiEdit2, FiSlash, FiLoader
 } from 'react-icons/fi';
 
 const MisLugares = () => {
@@ -15,16 +16,22 @@ const MisLugares = () => {
     const [exito, setExito] = useState('');
     const [busqueda, setBusqueda] = useState('');
 
-    // Formulario
+    // Formulario crear/corregir
     const [mostrarForm, setMostrarForm] = useState(false);
-    const [editando, setEditando] = useState(null); // id_lugar_produccion si es edición
+    const [editando, setEditando] = useState(null);
     const [form, setForm] = useState({ nom_lugar_produccion: '', predios_ids: [] });
     const [guardando, setGuardando] = useState(false);
-    const [prediosOriginales, setPrediosOriginales] = useState([]); // predios que ya tenía el lugar
+    const [prediosOriginales, setPrediosOriginales] = useState([]);
 
     // Modal detalle
     const [modalDetalle, setModalDetalle] = useState(null);
     const [prediosLugar, setPrediosLugar] = useState([]);
+
+    // Modal solicitud (edición o cancelación)
+    const [modalSolicitud, setModalSolicitud] = useState(null); // { lugar, tipo: 'edicion' | 'cancelacion' }
+    const [motivoSolicitud, setMotivoSolicitud] = useState('');
+    const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+    const [errorSolicitud, setErrorSolicitud] = useState('');
 
     useEffect(() => {
         cargarDatos();
@@ -86,25 +93,19 @@ const MisLugares = () => {
     };
 
     const togglePredio = (idPredio) => {
-        setForm(prev => {
-            const yaSeleccionado = prev.predios_ids.includes(idPredio);
-            return {
-                ...prev,
-                predios_ids: yaSeleccionado
-                    ? prev.predios_ids.filter(id => id !== idPredio)
-                    : [...prev.predios_ids, idPredio]
-            };
-        });
+        setForm(prev => ({
+            ...prev,
+            predios_ids: prev.predios_ids.includes(idPredio)
+                ? prev.predios_ids.filter(id => id !== idPredio)
+                : [...prev.predios_ids, idPredio]
+        }));
     };
 
-    // Todos los predios que se pueden mostrar en el formulario
     const prediosParaFormulario = () => {
         if (editando) {
-            // Combinar predios originales del lugar + predios disponibles
             const idsDisponibles = prediosDisponibles.map(p => p.id_predio);
             const idsOriginales = prediosOriginales.map(p => p.id_predio);
             const todosIds = new Set([...idsDisponibles, ...idsOriginales]);
-
             const combinados = [];
             todosIds.forEach(id => {
                 const predio = prediosOriginales.find(p => p.id_predio === id)
@@ -127,10 +128,8 @@ const MisLugares = () => {
         }
 
         setGuardando(true);
-
         try {
             if (editando) {
-                // Corregir solicitud devuelta usando PUT
                 await API_GESTION.put(`/lugares-produccion/${editando}`, {
                     nom_lugar_produccion: form.nom_lugar_produccion,
                     predios_ids: form.predios_ids
@@ -153,6 +152,46 @@ const MisLugares = () => {
         }
     };
 
+    // === SOLICITAR EDICIÓN / CANCELACIÓN ===
+    const abrirModalSolicitud = (lugar, tipo) => {
+        setModalSolicitud({ lugar, tipo });
+        setMotivoSolicitud('');
+        setErrorSolicitud('');
+    };
+
+    const enviarSolicitud = async () => {
+        if (!motivoSolicitud.trim()) {
+            setErrorSolicitud('Debe indicar el motivo de la solicitud');
+            return;
+        }
+
+        setEnviandoSolicitud(true);
+        setErrorSolicitud('');
+
+        try {
+            const { lugar, tipo } = modalSolicitud;
+            const endpoint = tipo === 'edicion'
+                ? `/lugares-produccion/${lugar.id_lugar_produccion}/solicitar-edicion`
+                : `/lugares-produccion/${lugar.id_lugar_produccion}/solicitar-cancelacion`;
+
+            await API_GESTION.patch(endpoint, { observaciones: motivoSolicitud });
+
+            const mensajes = {
+                edicion: 'Solicitud de edición enviada. El administrador la revisará.',
+                cancelacion: 'Solicitud de cancelación enviada. El administrador la revisará.'
+            };
+
+            setExito(mensajes[tipo]);
+            setModalSolicitud(null);
+            cargarDatos();
+            setTimeout(() => setExito(''), 5000);
+        } catch (err) {
+            setErrorSolicitud(err.response?.data?.error || 'Error al enviar solicitud');
+        } finally {
+            setEnviandoSolicitud(false);
+        }
+    };
+
     const verDetalle = async (lugar) => {
         try {
             const response = await API_GESTION.get(`/lugares-produccion/${lugar.id_lugar_produccion}`);
@@ -168,10 +207,17 @@ const MisLugares = () => {
             'pendiente': { clase: 'bg-warning text-dark', icono: <FiClock size={12} className="me-1" /> },
             'aprobado': { clase: 'bg-success', icono: <FiCheck size={12} className="me-1" /> },
             'rechazado': { clase: 'bg-danger', icono: <FiXCircle size={12} className="me-1" /> },
-            'devuelto': { clase: 'bg-info text-dark', icono: <FiAlertCircle size={12} className="me-1" /> }
+            'devuelto': { clase: 'bg-info text-dark', icono: <FiAlertCircle size={12} className="me-1" /> },
+            'en_edicion': { clase: 'bg-primary', icono: <FiEdit2 size={12} className="me-1" /> },
+            'en_cancelacion': { clase: 'bg-dark', icono: <FiSlash size={12} className="me-1" /> },
+            'cancelado': { clase: 'bg-secondary', icono: <FiXCircle size={12} className="me-1" /> }
         };
         const c = config[estado] || { clase: 'bg-secondary', icono: null };
-        return <span className={`badge ${c.clase}`}>{c.icono}{estado}</span>;
+        const etiquetas = {
+            'en_edicion': 'En solicitud de edición',
+            'en_cancelacion': 'En solicitud de cancelación',
+        };
+        return <span className={`badge ${c.clase}`}>{c.icono}{etiquetas[estado] || estado}</span>;
     };
 
     const lugaresFiltrados = lugares.filter(l =>
@@ -204,7 +250,7 @@ const MisLugares = () => {
 
             {exito && <div className="alert alert-success py-2">{exito}</div>}
 
-            {/* Formulario */}
+            {/* Formulario crear/corregir */}
             {mostrarForm && (
                 <div className="content-card mb-4 border-start border-4" style={{ borderColor: 'var(--color-productor)' }}>
                     <h6 className="fw-bold mb-3">
@@ -239,18 +285,14 @@ const MisLugares = () => {
                                     {prediosParaFormulario().map(predio => (
                                         <div className="col-md-6" key={predio.id_predio}>
                                             <div
-                                                className={`border rounded p-3 ${
-                                                    form.predios_ids.includes(predio.id_predio)
-                                                        ? 'border-warning bg-warning bg-opacity-10'
-                                                        : ''
-                                                }`}
+                                                className={`border rounded p-3 ${form.predios_ids.includes(predio.id_predio)
+                                                    ? 'border-warning bg-warning bg-opacity-10' : ''}`}
                                                 onClick={() => togglePredio(predio.id_predio)}
                                                 style={{ cursor: 'pointer' }}
                                             >
                                                 <div className="d-flex align-items-center gap-2">
                                                     <input
-                                                        type="checkbox"
-                                                        className="form-check-input"
+                                                        type="checkbox" className="form-check-input"
                                                         checked={form.predios_ids.includes(predio.id_predio)}
                                                         onChange={() => togglePredio(predio.id_predio)}
                                                     />
@@ -338,11 +380,17 @@ const MisLugares = () => {
 
                                 {lugar.observaciones_admin && (
                                     <div className="alert alert-info py-2 mt-2 mb-2">
-                                        <small><strong>Observaciones:</strong> {lugar.observaciones_admin}</small>
+                                        <small><strong>Obs. Admin:</strong> {lugar.observaciones_admin}</small>
                                     </div>
                                 )}
 
-                                <div className="d-flex gap-2 mt-2">
+                                {lugar.observaciones_productor && (
+                                    <div className="alert alert-warning py-2 mt-2 mb-2">
+                                        <small><strong>Su solicitud:</strong> {lugar.observaciones_productor}</small>
+                                    </div>
+                                )}
+
+                                <div className="d-flex gap-2 mt-auto pt-2 flex-wrap">
                                     <button
                                         className="btn btn-sm btn-outline-secondary flex-grow-1"
                                         onClick={() => verDetalle(lugar)}
@@ -357,6 +405,31 @@ const MisLugares = () => {
                                         >
                                             <FiEdit2 className="me-1" /> Corregir
                                         </button>
+                                    )}
+
+                                    {lugar.estado === 'aprobado' && (
+                                        <>
+                                            <button
+                                                className="btn btn-sm btn-outline-primary flex-grow-1"
+                                                onClick={() => abrirModalSolicitud(lugar, 'edicion')}
+                                            >
+                                                <FiEdit2 className="me-1" /> Solicitar edición
+                                            </button>
+                                            <button
+                                                className="btn btn-sm btn-outline-danger flex-grow-1"
+                                                onClick={() => abrirModalSolicitud(lugar, 'cancelacion')}
+                                            >
+                                                <FiSlash className="me-1" /> Solicitar cancelación
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {(lugar.estado === 'en_edicion' || lugar.estado === 'en_cancelacion') && (
+                                        <div className="w-100">
+                                            <small className="text-muted d-flex align-items-center gap-1">
+                                                <FiLoader size={12} /> Esperando respuesta del administrador...
+                                            </small>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -390,7 +463,13 @@ const MisLugares = () => {
 
                                 {modalDetalle.observaciones_admin && (
                                     <div className="alert alert-info py-2 mb-3">
-                                        <strong>Observaciones:</strong> {modalDetalle.observaciones_admin}
+                                        <strong>Observaciones del administrador:</strong> {modalDetalle.observaciones_admin}
+                                    </div>
+                                )}
+
+                                {modalDetalle.observaciones_productor && (
+                                    <div className="alert alert-warning py-2 mb-3">
+                                        <strong>Solicitud del productor:</strong> {modalDetalle.observaciones_productor}
                                     </div>
                                 )}
 
@@ -424,6 +503,76 @@ const MisLugares = () => {
                             </div>
                             <div className="modal-footer">
                                 <button className="btn btn-secondary" onClick={() => setModalDetalle(null)}>Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Solicitar Edición / Cancelación */}
+            {modalSolicitud && (
+                <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">
+                                    {modalSolicitud.tipo === 'edicion'
+                                        ? 'Solicitar Edición'
+                                        : 'Solicitar Cancelación'}
+                                </h5>
+                                <button type="button" className="btn-close"
+                                    onClick={() => setModalSolicitud(null)} />
+                            </div>
+                            <div className="modal-body">
+                                {errorSolicitud && (
+                                    <div className="alert alert-danger py-2 d-flex align-items-center gap-2">
+                                        <FiAlertCircle /> <span>{errorSolicitud}</span>
+                                    </div>
+                                )}
+
+                                <p className="fw-bold mb-1">
+                                    Lugar: {modalSolicitud.lugar.nom_lugar_produccion}
+                                </p>
+                                <p className="text-muted small mb-3">
+                                    Registro ICA: {modalSolicitud.lugar.nro_registro_ica || 'N/A'}
+                                </p>
+
+                                {modalSolicitud.tipo === 'cancelacion' && (
+                                    <div className="alert alert-warning py-2 mb-3">
+                                        <small>
+                                            <strong>Atención:</strong> Si la cancelación es aprobada, el lugar de producción
+                                            quedará inactivo y se desvincularán sus predios. Esta acción no es reversible.
+                                        </small>
+                                    </div>
+                                )}
+
+                                <div className="mb-3">
+                                    <label className="form-label fw-semibold">
+                                        {modalSolicitud.tipo === 'edicion'
+                                            ? '¿Qué desea modificar y por qué? *'
+                                            : 'Motivo de la cancelación *'}
+                                    </label>
+                                    <textarea
+                                        className="form-control" rows="4"
+                                        value={motivoSolicitud}
+                                        onChange={(e) => setMotivoSolicitud(e.target.value)}
+                                        placeholder={modalSolicitud.tipo === 'edicion'
+                                            ? 'Describa los cambios que necesita realizar...'
+                                            : 'Indique por qué desea cancelar este lugar de producción...'}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setModalSolicitud(null)}>
+                                    Cancelar
+                                </button>
+                                <button
+                                    className={`btn ${modalSolicitud.tipo === 'edicion' ? 'btn-primary' : 'btn-danger'} text-white`}
+                                    onClick={enviarSolicitud}
+                                    disabled={enviandoSolicitud}
+                                >
+                                    {enviandoSolicitud ? 'Enviando...' : 'Enviar Solicitud'}
+                                </button>
                             </div>
                         </div>
                     </div>

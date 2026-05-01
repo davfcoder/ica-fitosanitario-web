@@ -2,6 +2,37 @@ const pool = require('../config/mysqlDatabase');
 
 class SolicitudInspeccionRepository {
 
+    // Verificar si un asistente ya tiene solicitud asignada en una fecha
+    async findByAsistenteYFecha(idAsistente, fecha) {
+        const [rows] = await pool.execute(
+            `SELECT id_solicitud FROM SolicitudInspeccion 
+            WHERE id_asistente_asignado = ? AND fec_programada = ? 
+            AND estado IN ('asignada', 'en_proceso')`,
+            [idAsistente, fecha]
+        );
+        return rows;
+    }
+
+    // Cancelar solicitud
+    async cancelarSolicitud(idSolicitud, observaciones) {
+        const [result] = await pool.execute(
+            `UPDATE SolicitudInspeccion SET estado = 'cancelada', observaciones_admin = ?
+            WHERE id_solicitud = ?`,
+            [observaciones, idSolicitud]
+        );
+        return result.affectedRows > 0;
+    }
+
+    // Marcar como inconclusa
+    async marcarInconclusa(idSolicitud, observaciones) {
+        const [result] = await pool.execute(
+            `UPDATE SolicitudInspeccion SET estado = 'inconclusa', observaciones_asistente = ?
+            WHERE id_solicitud = ?`,
+            [observaciones, idSolicitud]
+        );
+        return result.affectedRows > 0;
+    }
+
     async findAll() {
         const [rows] = await pool.execute(
             `SELECT si.*, 
@@ -76,9 +107,9 @@ class SolicitudInspeccionRepository {
 
     async save(solicitud) {
         const [result] = await pool.execute(
-            `INSERT INTO SolicitudInspeccion (id_lugar_produccion, id_usuario_solicitante, motivo, estado)
-             VALUES (?, ?, ?, 'pendiente')`,
-            [solicitud.id_lugar_produccion, solicitud.id_usuario_solicitante, solicitud.motivo]
+            `INSERT INTO SolicitudInspeccion (id_lugar_produccion, id_usuario_solicitante, motivo, estado, observaciones_productor)
+            VALUES (?, ?, ?, 'pendiente', ?)`,
+            [solicitud.id_lugar_produccion, solicitud.id_usuario_solicitante, solicitud.motivo, solicitud.observaciones_productor || null]
         );
         return { id_solicitud: result.insertId, ...solicitud };
     }

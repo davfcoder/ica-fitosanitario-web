@@ -102,6 +102,19 @@ const LugaresProduccion = () => {
                     endpoint = `/lugares-produccion/${lugar.id_lugar_produccion}/devolver`;
                     body = { observaciones: formAccion.observaciones };
                     break;
+                case 'aprobar_cambio':
+                    endpoint = `/lugares-produccion/${lugar.id_lugar_produccion}/aprobar-cambio`;
+                    body = { observaciones: formAccion.observaciones };
+                    break;
+                case 'rechazar_cambio':
+                    if (!formAccion.observaciones) {
+                        setErrorAccion('Debe indicar el motivo del rechazo');
+                        setEjecutando(false);
+                        return;
+                    }
+                    endpoint = `/lugares-produccion/${lugar.id_lugar_produccion}/rechazar-cambio`;
+                    body = { observaciones: formAccion.observaciones };
+                    break;
                 default:
                     return;
             }
@@ -111,7 +124,9 @@ const LugaresProduccion = () => {
             const mensajes = {
                 aprobar: 'Lugar de producción aprobado exitosamente',
                 rechazar: 'Solicitud rechazada',
-                devolver: 'Solicitud devuelta para correcciones'
+                devolver: 'Solicitud devuelta para correcciones',
+                aprobar_cambio: 'Solicitud del productor aprobada',
+                rechazar_cambio: 'Solicitud del productor rechazada'
             };
 
             setExito(mensajes[accion]);
@@ -130,9 +145,16 @@ const LugaresProduccion = () => {
             'pendiente': 'bg-warning text-dark',
             'aprobado': 'bg-success',
             'rechazado': 'bg-danger',
-            'devuelto': 'bg-info text-dark'
+            'devuelto': 'bg-info text-dark',
+            'en_edicion': 'bg-primary',
+            'en_cancelacion': 'bg-dark',
+            'cancelado': 'bg-secondary'
         };
-        return <span className={`badge ${estilos[estado] || 'bg-secondary'}`}>{estado}</span>;
+        const etiquetas = {
+            'en_edicion': 'Solicitud de edición',
+            'en_cancelacion': 'Solicitud de cancelación',
+        };
+        return <span className={`badge ${estilos[estado] || 'bg-secondary'}`}>{etiquetas[estado] || estado}</span>;
     };
 
     const getAccionConfig = (accion) => {
@@ -154,6 +176,18 @@ const LugaresProduccion = () => {
                 btnClass: 'btn-info',
                 btnTexto: 'Devolver',
                 descripcion: 'Indique las observaciones para que el productor corrija la solicitud.'
+            },
+            aprobar_cambio: {
+                titulo: 'Aprobar Solicitud del Productor',
+                btnClass: 'btn-success',
+                btnTexto: 'Aprobar',
+                descripcion: 'Apruebe la solicitud de edición o cancelación realizada por el productor.'
+            },
+            rechazar_cambio: {
+                titulo: 'Rechazar Solicitud del Productor',
+                btnClass: 'btn-danger',
+                btnTexto: 'Rechazar',
+                descripcion: 'Rechace la solicitud. El lugar volverá a su estado aprobado.'
             }
         };
         return config[accion] || {};
@@ -218,6 +252,9 @@ const LugaresProduccion = () => {
                                 <option value="aprobado">Aprobado</option>
                                 <option value="rechazado">Rechazado</option>
                                 <option value="devuelto">Devuelto</option>
+                                <option value="en_edicion">Solicitud de edición</option>
+                                <option value="en_cancelacion">Solicitud de cancelación</option>
+                                <option value="cancelado">Cancelado</option>
                             </select>
                         </div>
                     </div>
@@ -275,18 +312,15 @@ const LugaresProduccion = () => {
                                                     <FiEye />
                                                 </button>
 
-                                                {(lugar.estado === 'pendiente' || lugar.estado === 'devuelto') && (
-                                                    <button
-                                                        className="btn btn-sm btn-outline-success"
-                                                        onClick={() => abrirModalAccion(lugar, 'aprobar')}
-                                                        title="Aprobar"
-                                                    >
-                                                        <FiCheck />
-                                                    </button>
-                                                )}
-
                                                 {lugar.estado === 'pendiente' && (
                                                     <>
+                                                        <button
+                                                            className="btn btn-sm btn-outline-success"
+                                                            onClick={() => abrirModalAccion(lugar, 'aprobar')}
+                                                            title="Aprobar"
+                                                        >
+                                                            <FiCheck />
+                                                        </button>
                                                         <button
                                                             className="btn btn-sm btn-outline-danger"
                                                             onClick={() => abrirModalAccion(lugar, 'rechazar')}
@@ -300,6 +334,19 @@ const LugaresProduccion = () => {
                                                             title="Devolver"
                                                         >
                                                             <FiCornerUpLeft />
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {/* Solicitud de edición o cancelación del productor */}
+                                                {(lugar.estado === 'en_edicion' || lugar.estado === 'en_cancelacion') && (
+                                                    <>
+                                                        <button className="btn btn-sm btn-outline-success"
+                                                            onClick={() => abrirModalAccion(lugar, 'aprobar_cambio')} title="Aprobar solicitud">
+                                                            <FiCheck />
+                                                        </button>
+                                                        <button className="btn btn-sm btn-outline-danger"
+                                                            onClick={() => abrirModalAccion(lugar, 'rechazar_cambio')} title="Rechazar solicitud">
+                                                            <FiXCircle />
                                                         </button>
                                                     </>
                                                 )}
@@ -330,6 +377,16 @@ const LugaresProduccion = () => {
                             <div className="modal-body">
                                 <div className="row g-3 mb-3">
                                     <div className="col-md-6">
+                                        <strong>Productor:</strong>{' '}
+                                        {modalDetalle.productor_nombres && modalDetalle.productor_apellidos
+                                            ? `${modalDetalle.productor_nombres} ${modalDetalle.productor_apellidos}`
+                                            : 'No disponible'}
+                                    </div>
+                                    <div className="col-md-6">
+                                        <strong>Correo productor:</strong>{' '}
+                                        {modalDetalle.productor_correo || 'No disponible'}
+                                    </div>
+                                    <div className="col-md-6">
                                         <strong>Estado:</strong> {getEstadoBadge(modalDetalle.estado)}
                                     </div>
                                     <div className="col-md-6">
@@ -354,6 +411,12 @@ const LugaresProduccion = () => {
                                             <p className="text-muted mb-0 mt-1">{modalDetalle.observaciones_admin}</p>
                                         </div>
                                     )}
+                                    {modalDetalle.observaciones_productor && (
+                                        <div className="col-12">
+                                            <strong>Solicitud del productor:</strong>
+                                            <p className="text-muted mb-0 mt-1">{modalDetalle.observaciones_productor}</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <h6 className="fw-bold mt-3 mb-2">Predios asociados:</h6>
@@ -366,7 +429,7 @@ const LugaresProduccion = () => {
                                                 <tr>
                                                     <th>Nro. Predial</th>
                                                     <th>Nombre</th>
-                                                    <th>Municipio</th>
+                                                    <th>Ubicación</th>
                                                     <th>Área (ha)</th>
                                                 </tr>
                                             </thead>
@@ -375,7 +438,7 @@ const LugaresProduccion = () => {
                                                     <tr key={p.id_predio}>
                                                         <td>{p.num_predial}</td>
                                                         <td>{p.nom_predio}</td>
-                                                        <td>{p.municipio}, {p.departamento}</td>
+                                                        <td>{p.municipio}, {p.departamento}, {p.vereda}</td>
                                                         <td>{p.area_total}</td>
                                                     </tr>
                                                 ))}

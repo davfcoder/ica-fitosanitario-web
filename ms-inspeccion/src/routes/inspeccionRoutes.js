@@ -15,5 +15,7 @@ router.get('/reporte', (req, res) => controller.getReporte(req, res));
 router.get('/solicitud/:idSolicitud', (req, res) => controller.getInspeccionesPorSolicitud(req, res));
 router.get('/lote/:idLote', (req, res) => controller.getInspeccionesPorLote(req, res));
 router.get('/:id', (req, res) => controller.getInspeccionPorId(req, res));
+router.put('/:id', verificarRol(['Asistente Técnico']), (req, res) => controller.putActualizarInspeccion(req, res));
+router.get('/lote/:idLote/solicitud/:idSolicitud', (req, res) => controller.getInspeccionPorLoteYSolicitud(req, res));
 
 module.exports = router;

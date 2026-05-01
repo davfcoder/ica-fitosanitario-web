@@ -9,6 +9,7 @@ import SelectorUbicacion from '../../components/common/SelectorUbicacion';
 
 const Predios = () => {
     const [predios, setPredios] = useState([]);
+    const [lugares, setLugares] = useState([]);
     const [propietarios, setPropietarios] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
@@ -40,12 +41,14 @@ const Predios = () => {
     const cargarDatos = async () => {
         try {
             setCargando(true);
-            const [prediosRes, propietariosRes] = await Promise.all([
+            const [prediosRes, propietariosRes, lugaresRes] = await Promise.all([
                 API_GESTION.get('/predios'),
-                API_GESTION.get('/usuarios?rol=4') // Solo propietarios 
+                API_GESTION.get('/usuarios?rol=4'), // Solo propietarios 
+                API_GESTION.get('/lugares-produccion')
             ]);
             setPredios(prediosRes.data.data);
             setPropietarios(propietariosRes.data.data);
+            setLugares(lugaresRes.data.data);
         } catch (err) {
             setError(err.response?.data?.error || 'Error al cargar datos');
         } finally {
@@ -156,6 +159,12 @@ const Predios = () => {
     const getNombrePropietario = (idPropietario) => {
         const prop = propietarios.find(p => p.id_usuario === idPropietario);
         return prop ? `${prop.nombres} ${prop.apellidos}` : `Usuario #${idPropietario}`;
+    };
+
+    const getNombreLugar = (idLugar) => {
+        if (!idLugar) return null;
+        const lugar = lugares.find(l => l.id_lugar_produccion === idLugar);
+        return lugar ? lugar.nom_lugar_produccion : `Lugar #${idLugar}`;
     };
 
     const prediosFiltrados = predios.filter(p =>
@@ -407,7 +416,7 @@ const Predios = () => {
                                         <td>
                                             {predio.id_lugar_produccion ? (
                                                 <span className="badge bg-success">
-                                                    Lugar #{predio.id_lugar_produccion}
+                                                    {getNombreLugar(predio.id_lugar_produccion)}
                                                 </span>
                                             ) : (
                                                 <span className="badge bg-secondary">Disponible</span>
@@ -471,7 +480,7 @@ const Predios = () => {
                                             <strong>No se puede eliminar.</strong>
                                             <br />
                                             <small>
-                                                Este predio está asociado al Lugar de Producción #{modalEliminar.id_lugar_produccion}.
+                                                Este predio está asociado al lugar de producción "{getNombreLugar(modalEliminar.id_lugar_produccion)}".
                                                 Debe desvincularlo primero.
                                             </small>
                                         </div>
