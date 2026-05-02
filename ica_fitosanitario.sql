@@ -123,6 +123,9 @@ CREATE TABLE SolicitudInspeccion (
     fec_solicitud TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fec_programada DATE NULL,
     fec_completada TIMESTAMP NULL,
+    observaciones_productor TEXT NULL,
+    observaciones_admin TEXT NULL,
+    observaciones_asistente TEXT NULL,
     FOREIGN KEY (id_lugar_produccion) REFERENCES LugarProduccion(id_lugar_produccion),
     FOREIGN KEY (id_usuario_solicitante) REFERENCES Usuarios(id_usuario),
     FOREIGN KEY (id_asistente_asignado) REFERENCES Usuarios(id_usuario)
@@ -140,4 +143,4 @@ INSERT INTO Roles (nom_rol, descripcion) VALUES
 -- Contraseña por defecto: admin123 (encriptada con bcrypt)
 INSERT INTO Usuarios (num_identificacion, nombres, apellidos, direccion, telefono, correo_electronico, contrasenia, id_rol) 
 VALUES 
-(123456789, 'Admin', 'Principal', 'Sede Central ICA', '3000000000', 'admin@ica.gov.co', '$2a$10$h4/Ax79v5DleczAbm6AZbOIBdHzCHwQCkzGqx7yLCPPC2Edsdj7vq', 1);
+(123456789, 'Admin', 'Principal', 'Sede Central ICA', '3000000000', 'admin@ica.gov.co', '$2a10h4/Ax79v5DleczAbm6AZbOIBdHzCHwQCkzGqx7yLCPPC2Edsdj7vq', 1);
