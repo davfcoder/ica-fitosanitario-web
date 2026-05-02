@@ -59,12 +59,12 @@ class PredioRepository {
         return rows;
     }
 
-    async save(predio) {
+   async save(predio) {
         const [result] = await pool.execute(
             `INSERT INTO Predio (num_predial, nro_registro_ica, nom_predio, direccion, cx, cy, 
-                                 area_total, id_propietario, cod_dane_dpto, departamento, 
-                                 cod_dane_municipio, municipio, cod_dane_vereda, vereda, id_lugar_produccion) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                area_total, id_propietario, departamento, municipio, vereda, 
+                                id_lugar_produccion) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 predio.num_predial,
                 predio.nro_registro_ica || null,
@@ -74,11 +74,8 @@ class PredioRepository {
                 predio.cy,
                 predio.area_total,
                 predio.id_propietario,
-                predio.cod_dane_dpto,
                 predio.departamento,
-                predio.cod_dane_municipio,
                 predio.municipio,
-                predio.cod_dane_vereda,
                 predio.vereda,
                 predio.id_lugar_produccion || null
             ]
@@ -89,10 +86,9 @@ class PredioRepository {
     async update(id, predio) {
         const [result] = await pool.execute(
             `UPDATE Predio SET num_predial = ?, nro_registro_ica = ?, nom_predio = ?, direccion = ?,
-                    cx = ?, cy = ?, area_total = ?, id_propietario = ?, cod_dane_dpto = ?, 
-                    departamento = ?, cod_dane_municipio = ?, municipio = ?, cod_dane_vereda = ?, 
-                    vereda = ?, id_lugar_produccion = ?
-             WHERE id_predio = ?`,
+                    cx = ?, cy = ?, area_total = ?, id_propietario = ?, departamento = ?, 
+                    municipio = ?, vereda = ?, id_lugar_produccion = ?
+            WHERE id_predio = ?`,
             [
                 predio.num_predial,
                 predio.nro_registro_ica || null,
@@ -102,11 +98,8 @@ class PredioRepository {
                 predio.cy,
                 predio.area_total,
                 predio.id_propietario,
-                predio.cod_dane_dpto,
                 predio.departamento,
-                predio.cod_dane_municipio,
                 predio.municipio,
-                predio.cod_dane_vereda,
                 predio.vereda,
                 predio.id_lugar_produccion || null,
                 id

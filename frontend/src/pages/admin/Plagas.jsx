@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_GESTION } from '../../api/axiosConfig';
 import {
     FiPlus, FiEdit2, FiTrash2, FiSearch, FiSave, FiX,
@@ -19,6 +19,22 @@ const Plagas = () => {
     const [form, setForm] = useState({ nom_especie: '', nombre_comun: '' });
     const [guardando, setGuardando] = useState(false);
 
+    // Referencia para el auto-scroll
+    const formRef = useRef(null);
+    const asociarRef = useRef(null);
+
+    useEffect(() => {
+        if (mostrarForm && formRef.current) {
+            const rect = formRef.current.getBoundingClientRect();
+            // Verifica si el elemento está completamente visible en la pantalla
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            
+            if (!isVisible) {
+                formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [mostrarForm, editando]);
+
     // Modal eliminar
     const [modalEliminar, setModalEliminar] = useState(null);
     const [eliminando, setEliminando] = useState(false);
@@ -33,6 +49,17 @@ const Plagas = () => {
     useEffect(() => {
         cargarDatos();
     }, []);
+
+    useEffect(() => {
+        if (mostrarAsociar && asociarRef.current) {
+            const rect = asociarRef.current.getBoundingClientRect();
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            
+            if (!isVisible) {
+                asociarRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [mostrarAsociar]);
 
     const cargarDatos = async () => {
         try {
@@ -223,7 +250,7 @@ const Plagas = () => {
 
             {/* Formulario CRUD */}
             {mostrarForm && (
-                <div className="content-card mb-4 border-start border-4 border-success">
+                <div ref={formRef} style={{ scrollMarginTop: '100px' }} className="content-card mb-4 border-start border-4 border-success">
                     <h6 className="fw-bold mb-3">
                         {editando ? 'Editar Plaga' : 'Nueva Plaga'}
                     </h6>
@@ -270,7 +297,7 @@ const Plagas = () => {
 
             {/* Panel de asociación */}
             {mostrarAsociar && (
-                <div className="content-card mb-4 border-start border-4 border-primary">
+                <div ref={asociarRef} style={{ scrollMarginTop: '100px' }} className="content-card mb-4 border-start border-4 border-primary">
                     <h6 className="fw-bold mb-3">
                         <FiLink className="me-2" />
                         Especies asociadas a: <em>{mostrarAsociar.nombre_comun}</em>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_GESTION } from '../../api/axiosConfig';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiSave, FiX, FiAlertCircle} from 'react-icons/fi';
 import { LuLeaf } from 'react-icons/lu';
@@ -17,6 +17,21 @@ const EspeciesVegetales = () => {
     const [form, setForm] = useState({ nom_especie: '', nom_comun: '', ciclo_cultivo: '' });
     const [guardando, setGuardando] = useState(false);
 
+    // Referencia para el auto-scroll
+    const formRef = useRef(null);
+
+    useEffect(() => {
+        if (mostrarForm && formRef.current) {
+            const rect = formRef.current.getBoundingClientRect();
+            // Verifica si el elemento está completamente visible en la pantalla
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            
+            if (!isVisible) {
+                formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [mostrarForm, editando]);
+    
     // Modal eliminar
     const [modalEliminar, setModalEliminar] = useState(null);
     const [eliminando, setEliminando] = useState(false);
@@ -157,7 +172,7 @@ const EspeciesVegetales = () => {
 
             {/* Formulario inline crear/editar */}
             {mostrarForm && (
-                <div className="content-card mb-4 border-start border-4 border-success">
+                <div ref={formRef} style={{ scrollMarginTop: '100px' }} className="content-card mb-4 border-start border-4 border-success">
                     <h6 className="fw-bold mb-3">
                         {editando ? 'Editar Especie Vegetal' : 'Nueva Especie Vegetal'}
                     </h6>

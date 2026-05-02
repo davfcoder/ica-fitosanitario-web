@@ -4,8 +4,9 @@ import { useAuth } from '../../context/AuthContext';
 import {
     FiPlus, FiSearch, FiSave, FiX, FiMapPin,
     FiAlertCircle, FiEye, FiClock, FiCheck, FiXCircle,
-    FiEdit2, FiSlash, FiLoader
+    FiEdit2, FiSlash, FiLoader, FiLayers
 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 const MisLugares = () => {
     const { usuario } = useAuth();
@@ -32,6 +33,9 @@ const MisLugares = () => {
     const [motivoSolicitud, setMotivoSolicitud] = useState('');
     const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
     const [errorSolicitud, setErrorSolicitud] = useState('');
+    const [modalConfirmar, setModalConfirmar] = useState(false);
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         cargarDatos();
@@ -117,7 +121,7 @@ const MisLugares = () => {
         return prediosDisponibles;
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         setError('');
         setExito('');
@@ -127,7 +131,12 @@ const MisLugares = () => {
             return;
         }
 
+        setModalConfirmar(true);
+    };
+
+    const confirmarEnvio = async () => {
         setGuardando(true);
+        setError('');
         try {
             if (editando) {
                 await API_GESTION.put(`/lugares-produccion/${editando}`, {
@@ -142,11 +151,13 @@ const MisLugares = () => {
                 });
                 setExito('Solicitud de lugar de producción enviada exitosamente');
             }
+            setModalConfirmar(false);
             cerrarForm();
             cargarDatos();
             setTimeout(() => setExito(''), 5000);
         } catch (err) {
             setError(err.response?.data?.error || 'Error al procesar solicitud');
+            setModalConfirmar(false);
         } finally {
             setGuardando(false);
         }
@@ -410,6 +421,12 @@ const MisLugares = () => {
                                     {lugar.estado === 'aprobado' && (
                                         <>
                                             <button
+                                                className="btn btn-sm btn-primary-productor text-white w-100 mb-1"
+                                                onClick={() => navigate(`/productor/proyecciones?lugar=${lugar.id_lugar_produccion}`)}
+                                            >
+                                                <FiLayers className="me-1" /> Gestionar Proyección
+                                            </button>
+                                            <button
                                                 className="btn btn-sm btn-outline-primary flex-grow-1"
                                                 onClick={() => abrirModalSolicitud(lugar, 'edicion')}
                                             >
@@ -459,6 +476,18 @@ const MisLugares = () => {
                                         <strong>Fecha aprobación:</strong>{' '}
                                         {modalDetalle.fec_aprobacion ? new Date(modalDetalle.fec_aprobacion).toLocaleDateString('es-CO') : '-'}
                                     </div>
+                                    {prediosLugar.length > 0 && (
+                                        <div className="col-12">
+                                            <strong>Dirección del lugar:</strong>
+                                            <div>{prediosLugar[0].direccion}</div>
+                                            <small className="text-muted">
+                                                {prediosLugar[0].vereda && `Vereda ${prediosLugar[0].vereda}`}
+                                                {prediosLugar[0].vereda && prediosLugar[0].municipio && ' — '}
+                                                {prediosLugar[0].municipio}
+                                                {prediosLugar[0].departamento && `, ${prediosLugar[0].departamento}`}
+                                            </small>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {modalDetalle.observaciones_admin && (
@@ -486,7 +515,7 @@ const MisLugares = () => {
                                                 {prediosLugar.map(p => (
                                                     <tr key={p.id_predio}>
                                                         <td>{p.nom_predio}</td>
-                                                        <td>{p.municipio}, {p.departamento}</td>
+                                                        <td>{p.municipio}, {p.departamento}, {p.vereda} </td>
                                                         <td>{p.area_total}</td>
                                                     </tr>
                                                 ))}
@@ -572,6 +601,64 @@ const MisLugares = () => {
                                     disabled={enviandoSolicitud}
                                 >
                                     {enviandoSolicitud ? 'Enviando...' : 'Enviar Solicitud'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal Confirmar Envío */}
+            {modalConfirmar && (
+                <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">
+                                    {editando ? 'Confirmar Reenvío' : 'Confirmar Envío de Solicitud'}
+                                </h5>
+                                <button type="button" className="btn-close" onClick={() => setModalConfirmar(false)} />
+                            </div>
+                            <div className="modal-body">
+                                <p>Por favor revise la información antes de enviar la solicitud:</p>
+                                <div className="border rounded p-3 bg-light">
+                                    <div className="mb-2">
+                                        <small className="text-muted d-block">Nombre del lugar:</small>
+                                        <strong>{form.nom_lugar_produccion}</strong>
+                                    </div>
+                                    <div className="mb-2">
+                                        <small className="text-muted d-block">Predios seleccionados ({form.predios_ids.length}):</small>
+                                        <ul className="mb-0 mt-1 ps-3">
+                                            {form.predios_ids.map(id => {
+                                                const predio = prediosParaFormulario().find(p => p.id_predio === id);
+                                                return predio ? (
+                                                    <li key={id}>
+                                                        <strong>{predio.nom_predio}</strong> — {predio.municipio}, {predio.departamento} ({predio.area_total} ha)
+                                                    </li>
+                                                ) : null;
+                                            })}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <small className="text-muted d-block">Área total:</small>
+                                        <strong>
+                                            {form.predios_ids.reduce((sum, id) => {
+                                                const p = prediosParaFormulario().find(pr => pr.id_predio === id);
+                                                return sum + (p?.area_total || 0);
+                                            }, 0).toFixed(2)} ha
+                                        </strong>
+                                    </div>
+                                </div>
+                                <p className="text-muted small mt-3 mb-0">
+                                    Una vez enviada, el administrador ICA revisará la solicitud.
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setModalConfirmar(false)} disabled={guardando}>
+                                    Volver a editar
+                                </button>
+                                <button className="btn btn-primary-productor text-white" onClick={confirmarEnvio} disabled={guardando}>
+                                    <FiSave className="me-2" />
+                                    {guardando ? 'Enviando...' : (editando ? 'Confirmar Reenvío' : 'Confirmar Envío')}
                                 </button>
                             </div>
                         </div>

@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { API_GESTION, API_INSPECCION } from '../../api/axiosConfig';
 import {
     FiSearch, FiFilter, FiClipboard, FiAlertCircle,
-    FiEye, FiUserPlus, FiClock, FiCheck, FiUser, FiCalendar
+    FiEye, FiUserPlus, FiClock, FiCheck, FiUser, FiCalendar,
+    FiXCircle, FiEdit2
 } from 'react-icons/fi';
-
-import { FiXCircle } from 'react-icons/fi';
-import { FiEdit2 } from 'react-icons/fi';
+import DireccionLugar from '../../components/common/DireccionLugar';
 
 const SolicitudesAdmin = () => {
     const [solicitudes, setSolicitudes] = useState([]);
@@ -412,6 +411,7 @@ const SolicitudesAdmin = () => {
                                 <div className="row g-3">
                                     <div className="col-6"><strong>Lugar:</strong><div>{modalDetalle.nom_lugar_produccion}</div></div>
                                     <div className="col-6"><strong>Estado:</strong><div>{getEstadoBadge(modalDetalle.estado)}</div></div>
+                                    <div className="col-12"><strong>Dirección del lugar:</strong><DireccionLugar solicitud={modalDetalle} /></div>
                                     <div className="col-12"><strong>Motivo:</strong><div>{modalDetalle.motivo}</div></div>
                                     <div className="col-6"><strong>Solicitante:</strong><div>{modalDetalle.solicitante_nombres} {modalDetalle.solicitante_apellidos}</div></div>
                                     <div className="col-6"><strong>Fecha solicitud:</strong><div>{new Date(modalDetalle.fec_solicitud).toLocaleDateString('es-CO')}</div></div>
@@ -423,6 +423,24 @@ const SolicitudesAdmin = () => {
                                     )}
                                     {modalDetalle.fec_completada && (
                                         <div className="col-12"><strong>Completada:</strong><div>{new Date(modalDetalle.fec_completada).toLocaleDateString('es-CO')}</div></div>
+                                    )}
+                                    {modalDetalle.observaciones_productor && (
+                                        <div className="col-12">
+                                            <strong>Observaciones del productor:</strong>
+                                            <div className="text-muted">{modalDetalle.observaciones_productor}</div>
+                                        </div>
+                                    )}
+                                    {modalDetalle.observaciones_admin && (
+                                        <div className="col-12">
+                                            <strong>Observaciones del administrador:</strong>
+                                            <div className="text-muted">{modalDetalle.observaciones_admin}</div>
+                                        </div>
+                                    )}
+                                    {modalDetalle.observaciones_asistente && (
+                                        <div className="col-12">
+                                            <strong>Observaciones del asistente:</strong>
+                                            <div className="text-muted">{modalDetalle.observaciones_asistente}</div>
+                                        </div>
                                     )}
                                 </div>
                             </div>

@@ -97,7 +97,7 @@ class SolicitudInspeccionService {
 
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
-        if (new Date(datos.fec_programada) < hoy) {
+        if (new Date(datos.fec_programada.replace(/-/g, '/')) < hoy) {
             throw { status: 400, message: 'La fecha programada no puede ser en el pasado' };
         }
 

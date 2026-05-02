@@ -120,12 +120,30 @@ class InspeccionService {
     }
 
     async generarReporte(filtros, usuario) {
-        // Aplicar restricciones según rol
-        if (usuario.nom_rol === 'Asistente Técnico') {
-            filtros.id_usuario_asistente = usuario.id_usuario;
-        }
+        let inspecciones;
 
-        const inspecciones = await inspeccionRepository.findConFiltros(filtros);
+        if (usuario.nom_rol === 'Asistente Técnico') {
+            // Restringir solo a sus inspecciones
+            filtros.id_usuario_asistente = usuario.id_usuario;
+            inspecciones = await inspeccionRepository.findConFiltros(filtros);
+        } else if (usuario.nom_rol === 'Productor') {
+            // Restringir a sus lugares de producción aprobados
+            const pool = require('../config/mysqlDatabase');
+            const [rows] = await pool.execute(
+                `SELECT id_lugar_produccion FROM LugarProduccion 
+                WHERE id_usuario_productor = ? AND estado = 'aprobado'`,
+                [usuario.id_usuario]
+            );
+            const idsLugares = rows.map(r => r.id_lugar_produccion);
+            if (idsLugares.length === 0) {
+                inspecciones = [];
+            } else {
+                inspecciones = await inspeccionRepository.findConFiltrosYLugares(filtros, idsLugares);
+            }
+        } else {
+            // Admin ve todo
+            inspecciones = await inspeccionRepository.findConFiltros(filtros);
+        }
 
         // Consolidar estadísticas
         let totalPlantas = 0;
@@ -136,15 +154,16 @@ class InspeccionService {
             totalPlantas += insp.cantidad_plantas_evaluadas;
             insp.hallazgos_plagas.forEach(h => {
                 totalInfestadas += h.cantidad_plantas_infestadas;
-                if (!plagasResumen[h.nom_plaga || h.id_plaga]) {
-                    plagasResumen[h.nom_plaga || h.id_plaga] = {
+                const key = h.nom_plaga || h.id_plaga;
+                if (!plagasResumen[key]) {
+                    plagasResumen[key] = {
                         nombre: h.nom_plaga || `Plaga ID: ${h.id_plaga}`,
                         total_plantas_infestadas: 0,
                         apariciones: 0
                     };
                 }
-                plagasResumen[h.nom_plaga || h.id_plaga].total_plantas_infestadas += h.cantidad_plantas_infestadas;
-                plagasResumen[h.nom_plaga || h.id_plaga].apariciones += 1;
+                plagasResumen[key].total_plantas_infestadas += h.cantidad_plantas_infestadas;
+                plagasResumen[key].apariciones += 1;
             });
         });
 
@@ -152,8 +171,8 @@ class InspeccionService {
             total_inspecciones: inspecciones.length,
             total_plantas_evaluadas: totalPlantas,
             total_plantas_infestadas: totalInfestadas,
-            porcentaje_infestacion_general: totalPlantas > 0 
-                ? Math.round((totalInfestadas / totalPlantas) * 10000) / 100 
+            porcentaje_infestacion_general: totalPlantas > 0
+                ? Math.round((totalInfestadas / totalPlantas) * 10000) / 100
                 : 0,
             resumen_plagas: Object.values(plagasResumen),
             inspecciones: inspecciones

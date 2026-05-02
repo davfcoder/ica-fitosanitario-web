@@ -5,6 +5,7 @@ import {
     FiAlertCircle, FiEye, FiClock, FiCheck, FiXCircle,
     FiUser, FiCalendar, FiFilter
 } from 'react-icons/fi';
+import DireccionLugar from '../../components/common/DireccionLugar';
 
 const MisSolicitudes = () => {
     const [solicitudes, setSolicitudes] = useState([]);
@@ -19,6 +20,7 @@ const MisSolicitudes = () => {
     const [mostrarForm, setMostrarForm] = useState(false);
     const [form, setForm] = useState({ id_lugar_produccion: '', motivo: '', observaciones_productor: '' });
     const [guardando, setGuardando] = useState(false);
+    const [modalConfirmar, setModalConfirmar] = useState(false);
 
     // Modal detalle
     const [modalDetalle, setModalDetalle] = useState(null);
@@ -57,24 +59,30 @@ const MisSolicitudes = () => {
         setError('');
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         setError('');
         setExito('');
-        setGuardando(true);
+        setModalConfirmar(true);
+    };
 
+    const confirmarEnvio = async () => {
+        setGuardando(true);
+        setError('');
         try {
-           await API_INSPECCION.post('/solicitudes', {
-            id_lugar_produccion: Number(form.id_lugar_produccion),
-            motivo: form.motivo,
-            observaciones_productor: form.observaciones_productor || null
-        });
+            await API_INSPECCION.post('/solicitudes', {
+                id_lugar_produccion: Number(form.id_lugar_produccion),
+                motivo: form.motivo,
+                observaciones_productor: form.observaciones_productor || null
+            });
             setExito('Solicitud de inspección creada exitosamente');
+            setModalConfirmar(false);
             cerrarForm();
             cargarDatos();
             setTimeout(() => setExito(''), 4000);
         } catch (err) {
             setError(err.response?.data?.error || 'Error al crear solicitud');
+            setModalConfirmar(false);
         } finally {
             setGuardando(false);
         }
@@ -233,7 +241,7 @@ const MisSolicitudes = () => {
                     <table className="table table-hover align-middle mb-0">
                         <thead className="table-light">
                             <tr>
-                                <th>#</th>
+                                <th>ID</th>
                                 <th>Lugar de Producción</th>
                                 <th>Motivo</th>
                                 <th>Estado</th>
@@ -309,6 +317,10 @@ const MisSolicitudes = () => {
                                         <div>{getEstadoBadge(modalDetalle.estado)}</div>
                                     </div>
                                     <div className="col-12">
+                                        <strong>Dirección del lugar:</strong>
+                                        <DireccionLugar solicitud={modalDetalle} />
+                                    </div>
+                                    <div className="col-12">
                                         <strong>Motivo:</strong>
                                         <div>{modalDetalle.motivo}</div>
                                     </div>
@@ -356,6 +368,52 @@ const MisSolicitudes = () => {
                             </div>
                             <div className="modal-footer">
                                 <button className="btn btn-secondary" onClick={() => setModalDetalle(null)}>Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal Confirmar Envío */}
+            {modalConfirmar && (
+                <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Confirmar Solicitud de Inspección</h5>
+                                <button type="button" className="btn-close" onClick={() => setModalConfirmar(false)} />
+                            </div>
+                            <div className="modal-body">
+                                <p>Por favor revise la información antes de enviar:</p>
+                                <div className="border rounded p-3 bg-light">
+                                    <div className="mb-2">
+                                        <small className="text-muted d-block">Lugar de producción:</small>
+                                        <strong>
+                                            {lugares.find(l => l.id_lugar_produccion === Number(form.id_lugar_produccion))?.nom_lugar_produccion || '-'}
+                                        </strong>
+                                    </div>
+                                    <div className="mb-2">
+                                        <small className="text-muted d-block">Motivo de la inspección:</small>
+                                        <strong>{form.motivo}</strong>
+                                    </div>
+                                    {form.observaciones_productor && (
+                                        <div>
+                                            <small className="text-muted d-block">Observaciones:</small>
+                                            <span>{form.observaciones_productor}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-muted small mt-3 mb-0">
+                                    Una vez enviada, el administrador ICA evaluará y asignará un asistente técnico.
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setModalConfirmar(false)} disabled={guardando}>
+                                    Volver a editar
+                                </button>
+                                <button className="btn btn-primary-productor text-white" onClick={confirmarEnvio} disabled={guardando}>
+                                    <FiSave className="me-2" />
+                                    {guardando ? 'Enviando...' : 'Confirmar Envío'}
+                                </button>
                             </div>
                         </div>
                     </div>

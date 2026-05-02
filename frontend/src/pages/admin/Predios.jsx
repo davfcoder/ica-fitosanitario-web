@@ -23,9 +23,7 @@ const Predios = () => {
         num_predial: '', nom_predio: '', direccion: '',
         cx: '', cy: '', area_total: '',
         id_propietario: '', nro_registro_ica: '',
-        cod_dane_dpto: '', departamento: '',
-        cod_dane_municipio: '', municipio: '',
-        cod_dane_vereda: '', vereda: ''
+        departamento: '', municipio: '', vereda: ''
     });
     const [guardando, setGuardando] = useState(false);
 
@@ -60,9 +58,7 @@ const Predios = () => {
         num_predial: '', nom_predio: '', direccion: '',
         cx: '', cy: '', area_total: '',
         id_propietario: '', nro_registro_ica: '',
-        cod_dane_dpto: '', departamento: '',
-        cod_dane_municipio: '', municipio: '',
-        cod_dane_vereda: '', vereda: ''
+        departamento: '', municipio: '', vereda: ''
     };
 
     const abrirFormCrear = () => {
@@ -83,11 +79,8 @@ const Predios = () => {
             area_total: predio.area_total || '',
             id_propietario: predio.id_propietario || '',
             nro_registro_ica: predio.nro_registro_ica || '',
-            cod_dane_dpto: predio.cod_dane_dpto || '',
             departamento: predio.departamento || '',
-            cod_dane_municipio: predio.cod_dane_municipio || '',
             municipio: predio.municipio || '',
-            cod_dane_vereda: predio.cod_dane_vereda || '',
             vereda: predio.vereda || ''
         });
         setEditando(predio.id_predio);

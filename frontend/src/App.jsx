@@ -17,6 +17,10 @@ import MisSolicitudes from './pages/productor/MisSolicitudes';
 import AsistenteDashboard from './pages/asistente/AsistenteDashboard';
 import SolicitudesAdmin from './pages/admin/SolicitudesAdmin';
 import RegistroInspeccion from './pages/asistente/RegistroInspeccion';
+import Proyeccion from './pages/productor/Proyeccion';
+import InspeccionesAdmin from './pages/admin/InspeccionesAdmin';
+import MisReportesAsistente from './pages/asistente/MisReportes';
+import MisReportesProductor from './pages/productor/MisReportes';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -145,7 +149,7 @@ const AppRoutes = () => {
             } />
             <Route path="/admin/inspecciones" element={
                 <ProtectedRoute allowedRoles={['Administrador ICA']}>
-                    <Placeholder titulo="Inspecciones" />
+                    <InspeccionesAdmin />
                 </ProtectedRoute>
             } />
             <Route path="/admin/reportes" element={
@@ -160,14 +164,9 @@ const AppRoutes = () => {
                     <ProductorDashboard />
                 </ProtectedRoute>
             } />
-            <Route path="/productor/lugares" element={
-                <ProtectedRoute allowedRoles={['Productor']}>
-                    <Placeholder titulo="Mis Lugares de Producción" />
-                </ProtectedRoute>
-            } />
             <Route path="/productor/proyecciones" element={
                 <ProtectedRoute allowedRoles={['Productor']}>
-                    <Placeholder titulo="Proyección de Producción" />
+                    <Proyeccion />
                 </ProtectedRoute>
             } />
             <Route path="/productor/inspecciones" element={
@@ -177,7 +176,7 @@ const AppRoutes = () => {
             } />
             <Route path="/productor/reportes" element={
                 <ProtectedRoute allowedRoles={['Productor']}>
-                    <Placeholder titulo="Reportes" />
+                    <MisReportesProductor />
                 </ProtectedRoute>
             } />
             <Route path="/productor/perfil" element={
@@ -204,7 +203,7 @@ const AppRoutes = () => {
             } />
             <Route path="/asistente/reportes" element={
                 <ProtectedRoute allowedRoles={['Asistente Técnico']}>
-                    <Placeholder titulo="Mis Reportes" />
+                    <MisReportesAsistente />
                 </ProtectedRoute>
             } />
             <Route path="/asistente/perfil" element={

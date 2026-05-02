@@ -38,12 +38,17 @@ class SolicitudInspeccionRepository {
             `SELECT si.*, 
                     lp.nom_lugar_produccion, lp.nro_registro_ica,
                     sol.nombres as solicitante_nombres, sol.apellidos as solicitante_apellidos,
-                    asi.nombres as asistente_nombres, asi.apellidos as asistente_apellidos
-             FROM SolicitudInspeccion si
-             INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
-             INNER JOIN Usuarios sol ON si.id_usuario_solicitante = sol.id_usuario
-             LEFT JOIN Usuarios asi ON si.id_asistente_asignado = asi.id_usuario
-             ORDER BY si.fec_solicitud DESC`
+                    asi.nombres as asistente_nombres, asi.apellidos as asistente_apellidos,
+                    pp.direccion as direccion_lugar, pp.vereda as vereda_lugar,
+                    pp.municipio as municipio_lugar, pp.departamento as departamento_lugar
+            FROM SolicitudInspeccion si
+            INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
+            INNER JOIN Usuarios sol ON si.id_usuario_solicitante = sol.id_usuario
+            LEFT JOIN Usuarios asi ON si.id_asistente_asignado = asi.id_usuario
+            LEFT JOIN Predio pp ON pp.id_predio = (
+                SELECT MIN(id_predio) FROM Predio WHERE id_lugar_produccion = lp.id_lugar_produccion
+            )
+            ORDER BY si.fec_solicitud DESC`
         );
         return rows;
     }
@@ -53,14 +58,65 @@ class SolicitudInspeccionRepository {
             `SELECT si.*, 
                     lp.nom_lugar_produccion, lp.nro_registro_ica, lp.id_usuario_productor,
                     sol.nombres as solicitante_nombres, sol.apellidos as solicitante_apellidos,
-                    asi.nombres as asistente_nombres, asi.apellidos as asistente_apellidos
-             FROM SolicitudInspeccion si
-             INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
-             INNER JOIN Usuarios sol ON si.id_usuario_solicitante = sol.id_usuario
-             LEFT JOIN Usuarios asi ON si.id_asistente_asignado = asi.id_usuario
-             WHERE si.id_solicitud = ?`, [id]
+                    sol.num_identificacion as solicitante_num_identificacion,
+                    sol.correo_electronico as solicitante_correo,
+                    sol.telefono as solicitante_telefono,
+                    asi.nombres as asistente_nombres, asi.apellidos as asistente_apellidos,
+                    asi.num_identificacion as asistente_num_identificacion,
+                    asi.correo_electronico as asistente_correo,
+                    asi.telefono as asistente_telefono,
+                    asi.nro_registro_ica as asistente_nro_registro_ica,
+                    asi.tarjeta_profesional as asistente_tarjeta_profesional,
+                    pp.direccion as direccion_lugar, pp.vereda as vereda_lugar,
+                    pp.municipio as municipio_lugar, pp.departamento as departamento_lugar
+            FROM SolicitudInspeccion si
+            INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
+            INNER JOIN Usuarios sol ON si.id_usuario_solicitante = sol.id_usuario
+            LEFT JOIN Usuarios asi ON si.id_asistente_asignado = asi.id_usuario
+            LEFT JOIN Predio pp ON pp.id_predio = (
+                SELECT MIN(id_predio) FROM Predio WHERE id_lugar_produccion = lp.id_lugar_produccion
+            )
+            WHERE si.id_solicitud = ?`, [id]
         );
         return rows[0] || null;
+    }
+
+    async findByAsistente(idAsistente) {
+        const [rows] = await pool.execute(
+            `SELECT si.*, 
+                    lp.nom_lugar_produccion, lp.nro_registro_ica,
+                    sol.nombres as solicitante_nombres, sol.apellidos as solicitante_apellidos,
+                    pp.direccion as direccion_lugar, pp.vereda as vereda_lugar,
+                    pp.municipio as municipio_lugar, pp.departamento as departamento_lugar
+            FROM SolicitudInspeccion si
+            INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
+            INNER JOIN Usuarios sol ON si.id_usuario_solicitante = sol.id_usuario
+            LEFT JOIN Predio pp ON pp.id_predio = (
+                SELECT MIN(id_predio) FROM Predio WHERE id_lugar_produccion = lp.id_lugar_produccion
+            )
+            WHERE si.id_asistente_asignado = ?
+            ORDER BY si.fec_programada ASC`, [idAsistente]
+        );
+        return rows;
+    }
+
+    async findBySolicitante(idSolicitante) {
+        const [rows] = await pool.execute(
+            `SELECT si.*, 
+                    lp.nom_lugar_produccion,
+                    asi.nombres as asistente_nombres, asi.apellidos as asistente_apellidos,
+                    pp.direccion as direccion_lugar, pp.vereda as vereda_lugar,
+                    pp.municipio as municipio_lugar, pp.departamento as departamento_lugar
+            FROM SolicitudInspeccion si
+            INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
+            LEFT JOIN Usuarios asi ON si.id_asistente_asignado = asi.id_usuario
+            LEFT JOIN Predio pp ON pp.id_predio = (
+                SELECT MIN(id_predio) FROM Predio WHERE id_lugar_produccion = lp.id_lugar_produccion
+            )
+            WHERE si.id_usuario_solicitante = ?
+            ORDER BY si.fec_solicitud DESC`, [idSolicitante]
+        );
+        return rows;
     }
 
     async findPendientes() {
@@ -73,34 +129,6 @@ class SolicitudInspeccionRepository {
              INNER JOIN Usuarios sol ON si.id_usuario_solicitante = sol.id_usuario
              WHERE si.estado = 'pendiente'
              ORDER BY si.fec_solicitud ASC`
-        );
-        return rows;
-    }
-
-    async findByAsistente(idAsistente) {
-        const [rows] = await pool.execute(
-            `SELECT si.*, 
-                    lp.nom_lugar_produccion, lp.nro_registro_ica,
-                    sol.nombres as solicitante_nombres, sol.apellidos as solicitante_apellidos
-             FROM SolicitudInspeccion si
-             INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
-             INNER JOIN Usuarios sol ON si.id_usuario_solicitante = sol.id_usuario
-             WHERE si.id_asistente_asignado = ?
-             ORDER BY si.fec_programada ASC`, [idAsistente]
-        );
-        return rows;
-    }
-
-    async findBySolicitante(idSolicitante) {
-        const [rows] = await pool.execute(
-            `SELECT si.*, 
-                    lp.nom_lugar_produccion,
-                    asi.nombres as asistente_nombres, asi.apellidos as asistente_apellidos
-             FROM SolicitudInspeccion si
-             INNER JOIN LugarProduccion lp ON si.id_lugar_produccion = lp.id_lugar_produccion
-             LEFT JOIN Usuarios asi ON si.id_asistente_asignado = asi.id_usuario
-             WHERE si.id_usuario_solicitante = ?
-             ORDER BY si.fec_solicitud DESC`, [idSolicitante]
         );
         return rows;
     }

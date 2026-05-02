@@ -26,6 +26,8 @@ class AuthService {
 
         const payload = {
             id_usuario: usuario.id_usuario,
+            nombres: usuario.nombres,
+            apellidos: usuario.apellidos,
             correo_electronico: usuario.correo_electronico,
             id_rol: usuario.id_rol,
             nom_rol: usuario.nom_rol

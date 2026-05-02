@@ -91,6 +91,25 @@ class InspeccionRepository {
             fec_inspeccion: { $gte: inicioMes }
         });
     }
+    async findConFiltrosYLugares(filtros, idsLugares) {
+        const query = {};
+        if (idsLugares && idsLugares.length > 0) {
+            query.id_lugar_produccion = { $in: idsLugares.map(Number) };
+        }
+        if (filtros.id_lugar_produccion) {
+            query.id_lugar_produccion = Number(filtros.id_lugar_produccion);
+        }
+        if (filtros.id_lote) query.id_lote = Number(filtros.id_lote);
+        if (filtros.id_usuario_asistente) query.id_usuario_asistente = Number(filtros.id_usuario_asistente);
+        if (filtros.id_plaga) query['hallazgos_plagas.id_plaga'] = Number(filtros.id_plaga);
+        if (filtros.fecha_inicio && filtros.fecha_fin) {
+            query.fec_inspeccion = {
+                $gte: new Date(filtros.fecha_inicio),
+                $lte: new Date(filtros.fecha_fin)
+            };
+        }
+        return await InspeccionFitosanitaria.find(query).sort({ fec_inspeccion: -1 });
+    }
 }
 
 module.exports = new InspeccionRepository();

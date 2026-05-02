@@ -3,11 +3,10 @@ import { API_GESTION, API_INSPECCION } from '../../api/axiosConfig';
 import {
     FiClipboard, FiSearch, FiFilter, FiEye, FiPlay,
     FiCheck, FiClock, FiUser, FiCalendar, FiAlertCircle,
-    FiMapPin
+    FiMapPin, FiXCircle
 } from 'react-icons/fi';
-
-import { FiXCircle } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import DireccionLugar from '../../components/common/DireccionLugar';
 
 const AsistenteDashboard = () => {
     const [solicitudes, setSolicitudes] = useState([]);
@@ -40,6 +39,25 @@ const AsistenteDashboard = () => {
     useEffect(() => {
         cargarDatos();
     }, []);
+
+    const fechaProgramadaEsHoyOPasada = (fecProgramada) => {
+        if (!fecProgramada) return false;
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const fecha = new Date(fecProgramada);
+        fecha.setHours(0, 0, 0, 0);
+        return fecha <= hoy;
+    };
+
+    const intentarIniciar = (sol) => {
+        if (!fechaProgramadaEsHoyOPasada(sol.fec_programada)) {
+            const fechaStr = new Date(sol.fec_programada).toLocaleDateString('es-CO');
+            setError(`No puede iniciar antes de la fecha programada (${fechaStr})`);
+            setTimeout(() => setError(''), 4000);
+            return;
+        }
+        iniciarInspeccion(sol.id_solicitud);
+    };
 
     const verReporte = async (solicitud) => {
         try {
@@ -283,13 +301,20 @@ const AsistenteDashboard = () => {
                                         <FiEye className="me-1" /> Ver detalle
                                     </button>
 
-                                    {sol.estado === 'asignada' && (
-                                        <button className="btn btn-sm btn-primary text-white flex-grow-1"
-                                            onClick={() => iniciarInspeccion(sol.id_solicitud)}
-                                            disabled={ejecutando}>
-                                            <FiPlay className="me-1" /> Iniciar
-                                        </button>
-                                    )}
+                                    {sol.estado === 'asignada' && (() => {
+                                        const habilitado = fechaProgramadaEsHoyOPasada(sol.fec_programada);
+                                        return (
+                                            <button
+                                                className="btn btn-sm btn-primary text-white flex-grow-1"
+                                                onClick={() => intentarIniciar(sol)}
+                                                disabled={ejecutando}
+                                                style={{ opacity: habilitado ? 1 : 0.5, cursor: habilitado ? 'pointer' : 'not-allowed' }}
+                                                title={habilitado ? 'Iniciar inspección' : `Disponible desde ${new Date(sol.fec_programada).toLocaleDateString('es-CO')}`}
+                                            >
+                                                <FiPlay className="me-1" /> Iniciar
+                                            </button>
+                                        );
+                                    })()}
 
                                     {sol.estado === 'en_proceso' && (
                                         <>
@@ -330,6 +355,7 @@ const AsistenteDashboard = () => {
                             </div>
                             <div className="modal-body">
                                 <div className="row g-3 mb-3">
+                                    <div className="col-12"><strong>Dirección del lugar:</strong><DireccionLugar solicitud={modalDetalle} /></div>
                                     <div className="col-6"><strong>Estado:</strong><div>{getEstadoBadge(modalDetalle.estado)}</div></div>
                                     <div className="col-6"><strong>Motivo:</strong><div>{modalDetalle.motivo}</div></div>
                                     <div className="col-6"><strong>Solicitante:</strong><div>{modalDetalle.solicitante_nombres} {modalDetalle.solicitante_apellidos}</div></div>
@@ -374,13 +400,20 @@ const AsistenteDashboard = () => {
                                 )}
                             </div>
                             <div className="modal-footer">
-                                {modalDetalle.estado === 'asignada' && (
-                                    <button className="btn btn-primary text-white"
-                                        onClick={() => iniciarInspeccion(modalDetalle.id_solicitud)}
-                                        disabled={ejecutando}>
-                                        <FiPlay className="me-1" /> Iniciar Inspección
-                                    </button>
-                                )}
+                                {modalDetalle.estado === 'asignada' && (() => {
+                                    const habilitado = fechaProgramadaEsHoyOPasada(modalDetalle.fec_programada);
+                                    return (
+                                        <button
+                                            className="btn btn-primary text-white"
+                                            onClick={() => intentarIniciar(modalDetalle)}
+                                            disabled={ejecutando}
+                                            style={{ opacity: habilitado ? 1 : 0.5, cursor: habilitado ? 'pointer' : 'not-allowed' }}
+                                            title={habilitado ? 'Iniciar inspección' : `Disponible desde ${new Date(modalDetalle.fec_programada).toLocaleDateString('es-CO')}`}
+                                        >
+                                            <FiPlay className="me-1" /> Iniciar Inspección
+                                        </button>
+                                    );
+                                })()}
                                 {modalDetalle.estado === 'en_proceso' && (
                                     <button className="btn btn-primary text-white"
                                         onClick={() => { setModalDetalle(null); navigate(`/asistente/inspeccion/${modalDetalle.id_solicitud}`); }}>
