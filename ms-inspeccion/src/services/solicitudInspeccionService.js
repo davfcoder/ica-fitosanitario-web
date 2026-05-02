@@ -1,4 +1,5 @@
 const solicitudRepository = require('../repositories/solicitudInspeccionRepository');
+const notificacionService = require('./notificacionService');
 
 class SolicitudInspeccionService {
 
@@ -20,6 +21,17 @@ class SolicitudInspeccionService {
         };
 
         const nueva = await solicitudRepository.save(solicitud);
+
+        // Avisar a admins de nueva solicitud pendiente
+        await notificacionService.crearParaAdmins({
+            id_usuario_remitente: usuarioSolicitante.id_usuario,
+            tipo: 'solicitud_nueva',
+            titulo: 'Nueva solicitud de inspección',
+            mensaje: `${usuarioSolicitante.nombres || 'Un productor'} registró una nueva solicitud de inspección pendiente de asignación.`,
+            metadata: { id_solicitud: nueva.id_solicitud },
+            ruta_destino: '/admin/solicitudes'
+        });
+
         return await solicitudRepository.findById(nueva.id_solicitud);
     }
 
@@ -48,7 +60,7 @@ class SolicitudInspeccionService {
         return solicitud;
     }
 
-    async asignarAsistente(idSolicitud, datos) {
+    async asignarAsistente(idSolicitud, datos, usuario) {
         if (!datos.id_asistente_asignado || !datos.fec_programada) {
             throw { status: 400, message: 'Asistente técnico y fecha programada son obligatorios' };
         }
@@ -62,13 +74,11 @@ class SolicitudInspeccionService {
             throw { status: 400, message: `No se puede asignar: el estado actual es '${solicitud.estado}'` };
         }
 
-        // Fecha programada no puede ser pasada
         const hoy = new Date().setHours(0, 0, 0, 0);
         if (new Date(datos.fec_programada.replace(/-/g, '/')) < hoy) {
             throw { status: 400, message: 'La fecha programada no puede ser en el pasado' };
         }
 
-        // Verificar que el asistente no tenga otra solicitud ese día
         const conflictos = await solicitudRepository.findByAsistenteYFecha(
             datos.id_asistente_asignado, datos.fec_programada
         );
@@ -76,12 +86,38 @@ class SolicitudInspeccionService {
             throw { status: 409, message: 'El asistente ya tiene una inspección asignada para esa fecha. Seleccione otra fecha u otro asistente.' };
         }
 
+        // PERSISTIR la asignación
         await solicitudRepository.asignarAsistente(idSolicitud, datos.id_asistente_asignado, datos.fec_programada);
-        return await solicitudRepository.findById(idSolicitud);
+
+        // Releer con datos enriquecidos para usar en notificaciones
+        const sol = await solicitudRepository.findById(idSolicitud);
+
+        // Notificar al asistente
+        await notificacionService.crear({
+            id_usuario_destinatario: datos.id_asistente_asignado,
+            id_usuario_remitente: usuario ? usuario.id_usuario : null,
+            tipo: 'inspeccion_asignada',
+            titulo: 'Nueva inspección asignada',
+            mensaje: `Se le asignó la inspección de ${sol.nom_lugar_produccion} para el ${datos.fec_programada}`,
+            metadata: { id_solicitud: idSolicitud, fec_programada: datos.fec_programada },
+            ruta_destino: '/asistente'
+        });
+
+        // Notificar al productor
+        await notificacionService.crear({
+            id_usuario_destinatario: sol.id_usuario_solicitante,
+            id_usuario_remitente: usuario ? usuario.id_usuario : null,
+            tipo: 'solicitud_asignada',
+            titulo: 'Inspección programada',
+            mensaje: `Su solicitud para ${sol.nom_lugar_produccion} fue asignada y programada para el ${datos.fec_programada}`,
+            metadata: { id_solicitud: idSolicitud },
+            ruta_destino: '/productor/inspecciones'
+        });
+
+        return sol;
     }
 
-    // Admin reasigna asistente o fecha
-    async reasignarSolicitud(idSolicitud, datos) {
+    async reasignarSolicitud(idSolicitud, datos, usuario) {
         const solicitud = await solicitudRepository.findById(idSolicitud);
         if (!solicitud) {
             throw { status: 404, message: 'Solicitud no encontrada' };
@@ -101,7 +137,6 @@ class SolicitudInspeccionService {
             throw { status: 400, message: 'La fecha programada no puede ser en el pasado' };
         }
 
-        // Verificar disponibilidad del asistente (excluyendo esta misma solicitud)
         const conflictos = await solicitudRepository.findByAsistenteYFecha(
             datos.id_asistente_asignado, datos.fec_programada
         );
@@ -111,7 +146,32 @@ class SolicitudInspeccionService {
         }
 
         await solicitudRepository.asignarAsistente(idSolicitud, datos.id_asistente_asignado, datos.fec_programada);
-        return await solicitudRepository.findById(idSolicitud);
+
+        const sol = await solicitudRepository.findById(idSolicitud);
+
+        // Notificar nuevo asistente
+        await notificacionService.crear({
+            id_usuario_destinatario: datos.id_asistente_asignado,
+            id_usuario_remitente: usuario ? usuario.id_usuario : null,
+            tipo: 'inspeccion_asignada',
+            titulo: 'Inspección reasignada a usted',
+            mensaje: `Se le reasignó la inspección de ${sol.nom_lugar_produccion} para el ${datos.fec_programada}`,
+            metadata: { id_solicitud: idSolicitud },
+            ruta_destino: '/asistente'
+        });
+
+        // Notificar al productor del cambio
+        await notificacionService.crear({
+            id_usuario_destinatario: sol.id_usuario_solicitante,
+            id_usuario_remitente: usuario ? usuario.id_usuario : null,
+            tipo: 'solicitud_asignada',
+            titulo: 'Inspección reprogramada',
+            mensaje: `Su inspección de ${sol.nom_lugar_produccion} fue reasignada y programada para el ${datos.fec_programada}`,
+            metadata: { id_solicitud: idSolicitud },
+            ruta_destino: '/productor/inspecciones'
+        });
+
+        return sol;
     }
 
     async iniciarInspeccion(idSolicitud, usuario) {
@@ -123,12 +183,10 @@ class SolicitudInspeccionService {
             throw { status: 400, message: `No se puede iniciar: el estado actual es '${solicitud.estado}'` };
         }
 
-        // Validar que el asistente asignado es quien inicia
         if (solicitud.id_asistente_asignado !== usuario.id_usuario) {
             throw { status: 403, message: 'Solo el asistente asignado puede iniciar esta inspección' };
         }
 
-        // No se puede iniciar antes de la fecha programada
         const hoy = new Date().setHours(0, 0, 0, 0);
         const fechaProg = new Date(solicitud.fec_programada);
         fechaProg.setHours(0, 0, 0, 0);
@@ -154,11 +212,23 @@ class SolicitudInspeccionService {
         }
 
         await solicitudRepository.updateEstado(idSolicitud, 'completada');
-        return await solicitudRepository.findById(idSolicitud);
+
+        const sol = await solicitudRepository.findById(idSolicitud);
+
+        await notificacionService.crear({
+            id_usuario_destinatario: sol.id_usuario_solicitante,
+            id_usuario_remitente: usuario.id_usuario,
+            tipo: 'inspeccion_completada',
+            titulo: 'Inspección completada',
+            mensaje: `La inspección de ${sol.nom_lugar_produccion} ha sido completada. Ya puede consultar los resultados.`,
+            metadata: { id_solicitud: idSolicitud },
+            ruta_destino: '/productor/reportes'
+        });
+
+        return sol;
     }
 
-    // Admin cancela solicitud
-    async cancelarSolicitud(idSolicitud, datos) {
+    async cancelarSolicitud(idSolicitud, datos, usuario) {
         const solicitud = await solicitudRepository.findById(idSolicitud);
         if (!solicitud) {
             throw { status: 404, message: 'Solicitud no encontrada' };
@@ -173,10 +243,36 @@ class SolicitudInspeccionService {
         }
 
         await solicitudRepository.cancelarSolicitud(idSolicitud, datos.observaciones);
-        return await solicitudRepository.findById(idSolicitud);
+
+        const sol = await solicitudRepository.findById(idSolicitud);
+
+        // Notificar al productor
+        await notificacionService.crear({
+            id_usuario_destinatario: sol.id_usuario_solicitante,
+            id_usuario_remitente: usuario ? usuario.id_usuario : null,
+            tipo: 'solicitud_cancelada',
+            titulo: 'Solicitud de inspección cancelada',
+            mensaje: `Su solicitud para ${sol.nom_lugar_produccion} fue cancelada. Motivo: ${datos.observaciones}`,
+            metadata: { id_solicitud: idSolicitud },
+            ruta_destino: '/productor/inspecciones'
+        });
+
+        // Notificar al asistente si estaba asignado
+        if (sol.id_asistente_asignado) {
+            await notificacionService.crear({
+                id_usuario_destinatario: sol.id_asistente_asignado,
+                id_usuario_remitente: usuario ? usuario.id_usuario : null,
+                tipo: 'inspeccion_cancelada',
+                titulo: 'Inspección cancelada',
+                mensaje: `La inspección de ${sol.nom_lugar_produccion} fue cancelada`,
+                metadata: { id_solicitud: idSolicitud },
+                ruta_destino: '/asistente'
+            });
+        }
+
+        return sol;
     }
 
-    // Asistente marca como inconclusa
     async marcarInconclusa(idSolicitud, datos, usuario) {
         const solicitud = await solicitudRepository.findById(idSolicitud);
         if (!solicitud) {
@@ -196,7 +292,31 @@ class SolicitudInspeccionService {
         }
 
         await solicitudRepository.marcarInconclusa(idSolicitud, datos.observaciones);
-        return await solicitudRepository.findById(idSolicitud);
+
+        const sol = await solicitudRepository.findById(idSolicitud);
+
+        // Productor
+        await notificacionService.crear({
+            id_usuario_destinatario: sol.id_usuario_solicitante,
+            id_usuario_remitente: usuario.id_usuario,
+            tipo: 'inspeccion_inconclusa',
+            titulo: 'Inspección marcada como inconclusa',
+            mensaje: `La inspección de ${sol.nom_lugar_produccion} fue marcada como inconclusa. Motivo: ${datos.observaciones}`,
+            metadata: { id_solicitud: idSolicitud },
+            ruta_destino: '/productor/inspecciones'
+        });
+
+        // Admins
+        await notificacionService.crearParaAdmins({
+            id_usuario_remitente: usuario.id_usuario,
+            tipo: 'inspeccion_inconclusa_admin',
+            titulo: 'Inspección marcada como inconclusa',
+            mensaje: `Una inspección de ${sol.nom_lugar_produccion} fue marcada como inconclusa por el asistente.`,
+            metadata: { id_solicitud: idSolicitud },
+            ruta_destino: '/admin/solicitudes'
+        });
+
+        return sol;
     }
 
     async obtenerContadores() {

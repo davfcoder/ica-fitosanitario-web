@@ -310,14 +310,12 @@ const RegistroInspeccion = () => {
                 return;
             }
 
-            const [lotesRes, plagasRes, inspeccionesRes] = await Promise.all([
+            const [lotesRes, inspeccionesRes] = await Promise.all([
                 API_GESTION.get(`/lotes?lugar=${sol.id_lugar_produccion}&activos=true`),
-                API_GESTION.get('/plagas'),
                 API_INSPECCION.get(`/inspecciones/solicitud/${idSolicitud}`)
             ]);
 
             setLotes(lotesRes.data.data);
-            setPlagasDisponibles(plagasRes.data.data);
 
             const yaRegistrados = {};
             inspeccionesRes.data.data.forEach(insp => {
@@ -351,7 +349,11 @@ const RegistroInspeccion = () => {
             setExito('');
             setErrorHallazgo('');
         }
-    }, [loteActualIdx]);
+        // Cargar plagas que afectan a la especie de este lote
+        if (loteActual) {
+            cargarPlagasDelLote(loteActual.id_especie);
+        }
+    }, [loteActualIdx, lotes]);
 
     // === HALLAZGOS DE PLAGAS ===
     const agregarHallazgo = () => {
@@ -397,6 +399,20 @@ const RegistroInspeccion = () => {
         setNuevaPlaga({ id_plaga: '', cantidad_plantas_infestadas: '' });
         setBusquedaPlaga('');
         setMostrarAddPlaga(false);
+    };
+
+    const cargarPlagasDelLote = async (idEspecie) => {
+        if (!idEspecie) {
+            setPlagasDisponibles([]);
+            return;
+        }
+        try {
+            const res = await API_GESTION.get(`/plagas?especie=${idEspecie}`);
+            setPlagasDisponibles(res.data.data || []);
+        } catch (err) {
+            console.error('Error al cargar plagas del lote:', err);
+            setPlagasDisponibles([]);
+        }
     };
 
     const eliminarHallazgo = (idx) => {
@@ -743,8 +759,13 @@ const RegistroInspeccion = () => {
                                             <div className="col-12">
                                                 <select className="form-select form-select-lg"
                                                     value={nuevaPlaga.id_plaga}
-                                                    onChange={(e) => setNuevaPlaga(prev => ({ ...prev, id_plaga: e.target.value }))}>
-                                                    <option value="">Seleccione plaga...</option>
+                                                    onChange={(e) => setNuevaPlaga(prev => ({ ...prev, id_plaga: e.target.value }))}
+                                                    disabled={plagasDisponibles.length === 0}>
+                                                    <option value="">
+                                                        {plagasDisponibles.length === 0
+                                                            ? 'No hay plagas registradas para esta especie'
+                                                            : 'Seleccione plaga...'}
+                                                    </option>
                                                     {plagasFiltradas.map(p => (
                                                         <option key={p.id_plaga} value={p.id_plaga}>
                                                             {p.nombre_comun} ({p.nom_especie})

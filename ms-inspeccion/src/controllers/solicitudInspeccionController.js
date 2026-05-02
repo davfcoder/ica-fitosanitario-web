@@ -35,7 +35,7 @@ class SolicitudInspeccionController {
 
     async patchAsignarAsistente(req, res) {
         try {
-            const solicitud = await solicitudService.asignarAsistente(req.params.id, req.body);
+            const solicitud = await solicitudService.asignarAsistente(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Asistente técnico asignado exitosamente', data: solicitud });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -62,7 +62,7 @@ class SolicitudInspeccionController {
 
     async patchCancelar(req, res) {
         try {
-            const solicitud = await solicitudService.cancelarSolicitud(req.params.id, req.body);
+            const solicitud = await solicitudService.cancelarSolicitud(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Solicitud cancelada', data: solicitud });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -80,7 +80,7 @@ class SolicitudInspeccionController {
 
     async patchReasignar(req, res) {
         try {
-            const solicitud = await solicitudService.reasignarSolicitud(req.params.id, req.body);
+            const solicitud = await solicitudService.reasignarSolicitud(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Solicitud reasignada exitosamente', data: solicitud });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });

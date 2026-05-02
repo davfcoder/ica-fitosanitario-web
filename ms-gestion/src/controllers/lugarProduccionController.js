@@ -25,7 +25,7 @@ class LugarProduccionController {
     // Admin aprueba cambio (edición o cancelación)
     async patchAprobarCambio(req, res) {
         try {
-            const lugar = await lugarProduccionService.aprobarCambio(req.params.id, req.body);
+            const lugar = await lugarProduccionService.aprobarCambio(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Cambio aprobado exitosamente', data: lugar });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -35,7 +35,7 @@ class LugarProduccionController {
     // Admin rechaza cambio
     async patchRechazarCambio(req, res) {
         try {
-            const lugar = await lugarProduccionService.rechazarCambio(req.params.id, req.body);
+            const lugar = await lugarProduccionService.rechazarCambio(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Cambio rechazado', data: lugar });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -95,7 +95,7 @@ class LugarProduccionController {
     // Admin aprueba
     async patchAprobar(req, res) {
         try {
-            const lugar = await lugarProduccionService.aprobarSolicitud(req.params.id, req.body);
+            const lugar = await lugarProduccionService.aprobarSolicitud(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Lugar de producción aprobado exitosamente', data: lugar });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -105,7 +105,7 @@ class LugarProduccionController {
     // Admin rechaza
     async patchRechazar(req, res) {
         try {
-            const lugar = await lugarProduccionService.rechazarSolicitud(req.params.id, req.body);
+            const lugar = await lugarProduccionService.rechazarSolicitud(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Solicitud rechazada', data: lugar });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });
@@ -115,7 +115,7 @@ class LugarProduccionController {
     // Admin devuelve
     async patchDevolver(req, res) {
         try {
-            const lugar = await lugarProduccionService.devolverSolicitud(req.params.id, req.body);
+            const lugar = await lugarProduccionService.devolverSolicitud(req.params.id, req.body, req.usuario);
             res.status(200).json({ message: 'Solicitud devuelta para correcciones', data: lugar });
         } catch (error) {
             res.status(error.status || 500).json({ error: error.message });

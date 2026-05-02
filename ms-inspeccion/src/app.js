@@ -7,6 +7,7 @@ require('./config/mysqlDatabase'); // Inicializa pool MySQL
 
 const solicitudRoutes = require('./routes/solicitudInspeccionRoutes');
 const inspeccionRoutes = require('./routes/inspeccionRoutes');
+const notificacionRoutes = require('./routes/notificacionRoutes');
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 // Rutas
 app.use('/api/solicitudes', solicitudRoutes);
 app.use('/api/inspecciones', inspeccionRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

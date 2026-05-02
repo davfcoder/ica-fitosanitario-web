@@ -1,6 +1,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { roleConfig } from '../../utils/roleConfig';
 import { FiMenu } from 'react-icons/fi';
+import CampanaNotificaciones from './CampanaNotificaciones';
 
 const TopBar = ({ onToggleSidebar }) => {
     const { usuario, getInitials, getRolColor } = useAuth();
@@ -26,6 +27,7 @@ const TopBar = ({ onToggleSidebar }) => {
                 </div>
             </div>
             <div className="d-flex align-items-center gap-3">
+                <CampanaNotificaciones />
                 <div className="text-end d-none d-md-block">
                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
                         {usuario.nombres} {usuario.apellidos}

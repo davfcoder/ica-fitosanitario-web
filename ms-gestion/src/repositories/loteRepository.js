@@ -56,7 +56,7 @@ class LoteRepository {
 
     async findLotesActivosByLugar(idLugar) {
         const [rows] = await pool.execute(
-            `SELECT l.*, v.nom_variedad, ev.nom_especie, ev.nom_comun
+            `SELECT l.*, v.nom_variedad, v.id_especie, ev.nom_especie, ev.nom_comun
              FROM Lote l
              INNER JOIN VariedadEspecie v ON l.id_variedad = v.id_variedad
              INNER JOIN EspecieVegetal ev ON v.id_especie = ev.id_especie

@@ -660,3 +660,25 @@ body {
         font-size: 0.85rem;
     }
 }
+
+/* Animación de campana cuando hay notificaciones no leídas */
+@keyframes campana-perfecta {
+    /* 0% a 22%: La fase de acción (vibración un poco más viva) */
+    0% { transform: rotate(0deg) scale(1); }
+    4% { transform: rotate(13.5deg) scale(1.12); }
+    8% { transform: rotate(-13.5deg) scale(1.12); }
+    12% { transform: rotate(9deg) scale(1.08); }
+    16% { transform: rotate(-9deg) scale(1.08); }
+    20% { transform: rotate(5deg) scale(1.04); }
+    22% { transform: rotate(0deg) scale(1); }
+
+    /* 22% a 100%: Los 2.5 segundos de espera */
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+.campana-vibrando {
+    display: inline-block;
+    transform-origin: top center;
+    /* Ciclo total de 3.2 segundos (aprox. 0.7s acción + 2.5s calma) */
+    animation: campana-perfecta 3.2s ease-in-out infinite;
+}
