@@ -1,7 +1,13 @@
-# Variables de entorno
+# Variables de entorno reales
 **/.env
 .env
-.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Permitir archivos de ejemplo
+!**/.env.example
 
 # Dependencias
 **/node_modules
