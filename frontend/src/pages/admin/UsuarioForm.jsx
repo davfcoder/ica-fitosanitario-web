@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_GESTION } from '../../api/axiosConfig';
-import { FiSave, FiArrowLeft, FiUser, FiMail, FiPhone, FiMapPin, FiLock, FiShield, FiAlertCircle } from 'react-icons/fi';
+import { FiSave, FiArrowLeft, FiUser, FiMail, FiPhone, FiMapPin, FiLock, FiShield, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 
 const UsuarioForm = () => {
     const { id } = useParams();
@@ -16,6 +16,7 @@ const UsuarioForm = () => {
         telefono: '',
         correo_electronico: '',
         contrasenia: '',
+        confirmar_contrasenia: '',
         id_rol: '',
         nro_registro_ica: '',
         tarjeta_profesional: ''
@@ -26,6 +27,10 @@ const UsuarioForm = () => {
     const [guardando, setGuardando] = useState(false);
     const [cargando, setCargando] = useState(false);
 
+    // Estados para controlar la visibilidad de las contraseñas
+    const [mostrarContrasenia, setMostrarContrasenia] = useState(false);
+    const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+    
     const esPropietario = Number(form.id_rol) === 4;
 
     useEffect(() => {
@@ -34,10 +39,10 @@ const UsuarioForm = () => {
         }
     }, [id]);
 
-    // Limpiar contraseña cuando se cambia a Propietario
+    // Limpiar contraseñas cuando se cambia a Propietario
     useEffect(() => {
         if (esPropietario) {
-            setForm(prev => ({ ...prev, contrasenia: '' }));
+            setForm(prev => ({ ...prev, contrasenia: '', confirmar_contrasenia: '' }));
         }
     }, [esPropietario]);
 
@@ -54,6 +59,7 @@ const UsuarioForm = () => {
                 telefono: usuario.telefono || '',
                 correo_electronico: usuario.correo_electronico || '',
                 contrasenia: '',
+                confirmar_contrasenia: '',
                 id_rol: usuario.id_rol || '',
                 nro_registro_ica: usuario.nro_registro_ica || '',
                 tarjeta_profesional: usuario.tarjeta_profesional || ''
@@ -76,17 +82,29 @@ const UsuarioForm = () => {
         e.preventDefault();
         setError('');
         setExito('');
+
+        // NUEVA VALIDACIÓN: Coincidencia de contraseñas
+        if (!esPropietario && (form.contrasenia || form.confirmar_contrasenia)) {
+            if (form.contrasenia !== form.confirmar_contrasenia) {
+                setError('Las contraseñas no coinciden. Por favor, verifique.');
+                return; // Detiene el guardado
+            }
+        }
+
         setGuardando(true);
 
         try {
             const datos = { ...form };
+            
+            // Eliminar confirmar_contrasenia antes de enviar al backend
+            delete datos.confirmar_contrasenia;
 
             // Propietario: no enviar contraseña
             if (esPropietario) {
                 delete datos.contrasenia;
             }
 
-            // En edición, no enviar contraseña vacía
+            // En edición, no enviar contraseña si está vacía
             if (esEdicion && !datos.contrasenia) {
                 delete datos.contrasenia;
             }
@@ -242,11 +260,49 @@ const UsuarioForm = () => {
                                     </label>
                                     <div className="input-group">
                                         <span className="input-group-text"><FiLock /></span>
-                                        <input type="password" className="form-control" name="contrasenia"
-                                            value={form.contrasenia} onChange={handleChange}
+                                        <input 
+                                            type={mostrarContrasenia ? "text" : "password"} 
+                                            className="form-control" 
+                                            name="contrasenia"
+                                            value={form.contrasenia} 
+                                            onChange={handleChange}
                                             required={!esEdicion}
                                             placeholder={esEdicion ? '••••••••' : 'Mínimo 6 caracteres'}
-                                            minLength={esEdicion ? 0 : 6} />
+                                            minLength={esEdicion ? 0 : 6} 
+                                        />
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-outline-secondary" 
+                                            onClick={() => setMostrarContrasenia(!mostrarContrasenia)}
+                                            title={mostrarContrasenia ? "Ocultar contraseña" : "Mostrar contraseña"}
+                                        >
+                                            {mostrarContrasenia ? <FiEyeOff /> : <FiEye />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-semibold">
+                                        Confirmar Contraseña {esEdicion ? '(dejar vacío para no cambiar)' : '*'}
+                                    </label>
+                                    <div className="input-group">
+                                        <span className="input-group-text"><FiLock /></span>
+                                        <input 
+                                            type={mostrarConfirmacion ? "text" : "password"} 
+                                            className="form-control" 
+                                            name="confirmar_contrasenia"
+                                            value={form.confirmar_contrasenia} 
+                                            onChange={handleChange}
+                                            required={!esEdicion && form.contrasenia !== ''} // Requerido si se está creando, o si se escribió algo en la nueva contraseña
+                                            placeholder={esEdicion ? '••••••••' : 'Repita la contraseña'}
+                                        />
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-outline-secondary" 
+                                            onClick={() => setMostrarConfirmacion(!mostrarConfirmacion)}
+                                            title={mostrarConfirmacion ? "Ocultar contraseña" : "Mostrar contraseña"}
+                                        >
+                                            {mostrarConfirmacion ? <FiEyeOff /> : <FiEye />}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
