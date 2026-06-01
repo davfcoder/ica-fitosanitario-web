@@ -28,7 +28,7 @@ CREATE TABLE Usuarios (
 CREATE TABLE LugarProduccion (
     id_lugar_produccion INT PRIMARY KEY AUTO_INCREMENT,
     nom_lugar_produccion VARCHAR(150) NOT NULL,
-    nro_registro_ica VARCHAR(50) NOT NULL,
+    nro_registro_ica VARCHAR(50) NULL,
     id_usuario_productor INT NOT NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
     observaciones_admin TEXT NULL,
